@@ -4,15 +4,13 @@ import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import type { AuthState, User } from "@/lib/types"
-import { getInstantClient } from "@/lib/instant/client"
-import { signIn, signUp, signOut } from "@/lib/auth"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string }>
+  login: (email: string) => Promise<{ success: boolean; message: string }>
+  register: (name: string, email: string) => Promise<{ success: boolean; message: string }>
   logout: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ success: boolean; message: string }>
-  updatePassword: (password: string) => Promise<{ success: boolean; message: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,30 +23,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
   })
   const router = useRouter()
-  const instant = getInstantClient()
+  const supabase = getSupabaseBrowserClient()
+
+  const upsertAndLoadProfile = async (sessionUser: SupabaseUser): Promise<User | null> => {
+    if (!supabase) return null
+    const fallbackName =
+      (sessionUser.user_metadata?.name as string | undefined) ||
+      (sessionUser.email ? sessionUser.email.split("@")[0] : "Utente")
+    const fallbackRole = (sessionUser.user_metadata?.role as string | undefined) || "client"
+
+    await supabase.from("profiles").upsert(
+      {
+        id: sessionUser.id,
+        email: sessionUser.email ?? "",
+        name: fallbackName,
+        role: fallbackRole,
+      },
+      { onConflict: "id" },
+    )
+
+    const { data: profileData } = await supabase.from("profiles").select("*").eq("id", sessionUser.id).single()
+
+    if (!profileData) return null
+
+    return {
+      id: profileData.id,
+      email: profileData.email,
+      name: profileData.name,
+      role: profileData.role,
+      phone: profileData.phone || undefined,
+      barberId: profileData.barber_id || undefined,
+    }
+  }
 
   useEffect(() => {
-    // Controlla se l'utente è già autenticato
+    if (!supabase) {
+      setAuthState({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+        error: "Config Supabase mancante",
+      })
+      return
+    }
+
     const checkAuth = async () => {
       try {
         const {
           data: { session },
-        } = await instant.auth.getSession()
+        } = await supabase.auth.getSession()
 
         if (session) {
-          // Ottieni il profilo utente
-          const { data: profileData } = await instant.from("profiles").select("*").eq("id", session.user.id).single()
-
-          if (profileData) {
+          const user = await upsertAndLoadProfile(session.user)
+          if (user) {
             setAuthState({
-              user: {
-                id: profileData.id,
-                email: profileData.email,
-                name: profileData.name,
-                role: profileData.role,
-                phone: profileData.phone || undefined,
-                barberId: profileData.barber_id || undefined,
-              },
+              user,
               isAuthenticated: true,
               isLoading: false,
               error: null,
@@ -80,24 +109,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Imposta un listener per i cambiamenti di autenticazione
     const {
       data: { subscription },
-    } = instant.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
-        // Ottieni il profilo utente
-        const { data: profileData } = await instant.from("profiles").select("*").eq("id", session.user.id).single()
-
-        if (profileData) {
-          const user: User = {
-            id: profileData.id,
-            email: profileData.email,
-            name: profileData.name,
-            role: profileData.role,
-            phone: profileData.phone || undefined,
-            barberId: profileData.barber_id || undefined,
-          }
-
+        const user = await upsertAndLoadProfile(session.user)
+        if (user) {
           setAuthState({
             user,
             isAuthenticated: true,
@@ -105,9 +122,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: null,
           })
 
-          // Reindirizza in base al ruolo
-          if (profileData.role === "client") {
-            if (profileData.barber_id) {
+          if (user.role === "client") {
+            if (user.barberId) {
               router.push("/booking")
             } else {
               router.push("/find-barber")
@@ -132,35 +148,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [instant, router])
+  }, [supabase, router])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string) => {
+    if (!supabase) {
+      return { success: false, message: "Config Supabase mancante" }
+    }
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const result = await signIn({ email, password })
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
 
-      if (!result.success) {
+      if (error) {
         setAuthState({
           user: null,
           isAuthenticated: false,
           isLoading: false,
-          error: result.message,
+          error: error.message,
         })
-        return result
+        return { success: false, message: error.message }
       }
 
-      // Update auth state on successful login
-      if (result.user) {
-        setAuthState({
-          user: result.user,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        })
-      }
-
-      return result
+      setAuthState((prev) => ({ ...prev, isLoading: false, error: null }))
+      return { success: true, message: "Ti abbiamo inviato un link di accesso via email." }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Errore durante l'accesso"
       setAuthState({
@@ -174,21 +189,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string) => {
+    if (!supabase) {
+      return { success: false, message: "Config Supabase mancante" }
+    }
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      const result = await signUp({ name, email, password, role: "client" })
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?name=${encodeURIComponent(name)}`,
+          data: {
+            name,
+            role: "client",
+          },
+        },
+      })
 
-      if (!result.success) {
+      if (error) {
         setAuthState((prev) => ({
           ...prev,
           isLoading: false,
-          error: result.message,
+          error: error.message,
         }))
+        return { success: false, message: error.message }
       }
 
-      return result
+      setAuthState((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: null,
+      }))
+
+      return { success: true, message: "Controlla la tua email per completare la registrazione." }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Errore durante la registrazione"
       setAuthState((prev) => ({
@@ -203,7 +237,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await signOut()
+      if (!supabase) return
+      await supabase.auth.signOut()
 
       setAuthState({
         user: null,
@@ -218,47 +253,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const resetPassword = async (email: string) => {
-    try {
-      const { error } = await instant.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
-      })
-
-      if (error) {
-        return { success: false, message: error.message }
-      }
-
-      return { success: true, message: "Email di reset password inviata con successo" }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Errore durante il reset della password"
-      return { success: false, message: errorMessage }
-    }
-  }
-
-  const updatePassword = async (password: string) => {
-    try {
-      const { error } = await instant.auth.updateUser({
-        password,
-      })
-
-      if (error) {
-        return { success: false, message: error.message }
-      }
-
-      return { success: true, message: "Password aggiornata con successo" }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Errore durante l'aggiornamento della password"
-      return { success: false, message: errorMessage }
-    }
-  }
-
   const value = {
     ...authState,
     login,
     register,
     logout,
-    resetPassword,
-    updatePassword,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

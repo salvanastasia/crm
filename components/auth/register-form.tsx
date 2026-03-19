@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { createClientComponentClient } from "@/lib/mock-helpers"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,13 +15,12 @@ import { useToast } from "@/hooks/use-toast"
 export function RegisterForm() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const router = useRouter()
-  const supabase = createClientComponentClient()
+  const supabase = getSupabaseBrowserClient()
   const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,45 +30,32 @@ export function RegisterForm() {
     setSuccessMessage(null)
 
     try {
-      // Registra l'utente con Supabase Auth
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      if (!supabase) {
+        setError("Config Supabase mancante")
+        return
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?name=${encodeURIComponent(name)}`,
           data: {
             name,
+            role: "client",
           },
         },
       })
 
-      if (signUpError) {
-        setError(signUpError.message)
+      if (signInError) {
+        setError(signInError.message)
         return
       }
 
-      // Verifica se è necessaria la conferma email
-      if (data?.user) {
-        // Inserisci i dati dell'utente nella tabella profiles
-        const { error: profileError } = await supabase.from("profiles").insert({
-          id: data.user.id,
-          name,
-          email,
-          role: "client", // Ruolo predefinito per i nuovi utenti
-        })
+      setSuccessMessage("Ti abbiamo inviato una email con il Magic Link per completare la registrazione.")
 
-        if (profileError) {
-          console.error("Errore durante la creazione del profilo:", profileError)
-          setError("Si è verificato un errore durante la creazione del profilo. Contatta l'assistenza.")
-          return
-        }
-
-        setSuccessMessage("Registrazione completata con successo! Controlla la tua email per confermare l'account.")
-
-        // Reindirizza alla pagina di login dopo un breve ritardo
-        setTimeout(() => {
-          router.push("/login")
-        }, 3000)
-      }
+      setTimeout(() => {
+        router.push("/login")
+      }, 2500)
     } catch (err) {
       console.error("Errore durante la registrazione:", err)
       setError("Si è verificato un errore durante la registrazione. Riprova più tardi.")
@@ -80,6 +66,11 @@ export function RegisterForm() {
 
   const handleSocialSignup = async (provider: "google" | "apple") => {
     try {
+      if (!supabase) {
+        setError("Config Supabase mancante")
+        return
+      }
+
       setSocialLoading(provider)
       setError(null)
 
@@ -145,20 +136,8 @@ export function RegisterForm() {
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-          />
-          <p className="text-xs text-gray-500">La password deve contenere almeno 6 caratteri</p>
-        </div>
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Registrazione in corso..." : "Registrati"}
+          {isLoading ? "Invio in corso..." : "Invia Magic Link"}
         </Button>
       </form>
 

@@ -1,46 +1,36 @@
--- Crea una policy che consente l'accesso pubblico in sola lettura alla tabella business_settings
-CREATE POLICY "Allow public read access to business_settings" 
-ON business_settings 
-FOR SELECT 
-USING (true);
-
--- Policy per consentire l'inserimento nella tabella profiles
-CREATE POLICY "Consenti inserimento profilo all'utente stesso" 
-ON profiles 
-FOR INSERT 
-WITH CHECK (auth.uid() = id);
-
--- Policy per consentire la lettura del proprio profilo
-CREATE POLICY "Consenti lettura profilo all'utente stesso" 
-ON profiles 
-FOR SELECT 
-USING (auth.uid() = id);
-
--- Policy per consentire l'aggiornamento del proprio profilo
-CREATE POLICY "Consenti aggiornamento profilo all'utente stesso" 
-ON profiles 
-FOR UPDATE 
-USING (auth.uid() = id);
-
--- Policy per consentire agli admin di leggere tutti i profili
-CREATE POLICY "Consenti agli admin di leggere tutti i profili" 
-ON profiles 
-FOR SELECT 
-USING (
-  EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-  )
-);
-
--- Policy per consentire agli admin di aggiornare tutti i profili
-CREATE POLICY "Consenti agli admin di aggiornare tutti i profili" 
-ON profiles 
-FOR UPDATE 
-USING (
-  EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-  )
-);
-
+-- Barber CRM — RLS summary (applied via Supabase migrations)
+--
+-- Helpers (SECURITY DEFINER; avoid recursion when policies read profiles):
+--   public.auth_user_profile()      → current row from profiles (optional utility)
+--   public.auth_can_manage_barber(uuid) → true if user owns the barber OR is admin/staff linked to that barber_id
+--
+-- profiles
+--   SELECT: own row OR shop staff/owner for rows with same barber_id
+--   INSERT: auth.uid() = id
+--   UPDATE: own row OR shop staff/owner for that barber_id
+--
+-- barbers
+--   SELECT: public (find-barber / discovery)
+--   INSERT/UPDATE/DELETE: owner_id = auth.uid()
+--
+-- services / resources
+--   SELECT: public for active rows (booking/catalog)
+--   ALL: shop manager (owner or admin/staff of barber_id)
+--
+-- resource_services
+--   SELECT: public when linked resource + service are active
+--   ALL: shop manager (via resource’s barber_id + service’s barber_id)
+--
+-- business_settings / business_hours
+--   SELECT: public
+--   ALL: shop manager
+--
+-- notification_settings
+--   SELECT / ALL: shop manager only
+--
+-- appointments
+--   SELECT: client sees own (client_id = auth.uid()) OR shop manager for barber_id
+--   INSERT: client_id = auth.uid() (booking) OR shop manager (FOR ALL)
+--   UPDATE: own row OR shop manager
+--
+-- Note: Service role (server with service key) bypasses RLS for admin scripts/API routes.
