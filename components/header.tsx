@@ -1,0 +1,163 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { Search, User, LogOut } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ModeToggle } from "@/components/mode-toggle"
+import { getBrandSettings } from "@/lib/actions"
+import { useAuth } from "@/components/auth-context"
+import type { BrandSettings } from "@/lib/types"
+
+const navItems = [
+  {
+    name: "Dashboard",
+    href: "/",
+  },
+  {
+    name: "Clienti",
+    href: "/clienti",
+  },
+  {
+    name: "Servizi",
+    href: "/servizi",
+  },
+  {
+    name: "Risorse",
+    href: "/risorse",
+  },
+  {
+    name: "Calendario",
+    href: "/calendario",
+  },
+]
+
+export function Header() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const [settings, setSettings] = useState<BrandSettings | null>(null)
+  const { user, isAuthenticated, logout } = useAuth()
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      const data = await getBrandSettings()
+      setSettings(data)
+    }
+
+    loadSettings()
+
+    // Aggiungi un event listener per l'evento personalizzato
+    const handleSettingsUpdate = (e: CustomEvent<BrandSettings>) => {
+      setSettings(e.detail)
+    }
+
+    window.addEventListener("brandSettingsUpdated", handleSettingsUpdate as EventListener)
+
+    return () => {
+      window.removeEventListener("brandSettingsUpdated", handleSettingsUpdate as EventListener)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    logout()
+    router.push("/login")
+  }
+
+  return (
+    <header className="border-b bg-background">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={settings?.logoUrl || ""} alt="Logo" />
+                <AvatarFallback>
+                  <User className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-semibold">{settings?.businessName || "Barber CRM"}</span>
+            </div>
+
+            {isAuthenticated && (
+              <nav className="hidden md:flex items-center space-x-4">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "px-3 py-2 text-sm transition-colors hover:text-primary",
+                      pathname === item.href ? "text-primary font-medium" : "text-muted-foreground",
+                    )}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4">
+            {isAuthenticated && (
+              <div className="relative hidden md:block w-64">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input type="search" placeholder="Cerca..." className="w-full pl-8 bg-background" />
+              </div>
+            )}
+
+            <ModeToggle />
+
+            {isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Avatar" />
+                      <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>Profilo</DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Link href="/impostazioni" className="w-full">
+                      Impostazioni
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Esci
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="default" size="sm" asChild>
+                <Link href="/login">Accedi</Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  )
+}
+
