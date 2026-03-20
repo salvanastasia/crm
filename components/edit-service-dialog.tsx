@@ -41,12 +41,17 @@ export function EditServiceDialog({ service, open, onOpenChange, onServiceUpdate
       const updatedService = await updateService({
         id: service.id,
         name,
-        duration: Number.parseInt(duration),
+        duration: Number.parseInt(duration, 10),
         price: Number.parseFloat(price),
         comparePrice: comparePrice ? Number.parseFloat(comparePrice) : undefined,
+        isActive: service.isActive,
+        barberId: service.barberId,
+        description: service.description,
       })
 
-      onServiceUpdated(updatedService)
+      if (updatedService) {
+        onServiceUpdated(updatedService)
+      }
     } catch (error) {
       console.error("Error updating service:", error)
     } finally {

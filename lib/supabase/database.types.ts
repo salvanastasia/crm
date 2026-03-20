@@ -73,6 +73,38 @@ export interface Database {
           owner_id?: string
         }
       }
+      clients: {
+        Row: {
+          id: string
+          barber_id: string
+          name: string
+          email: string
+          phone: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          barber_id: string
+          name: string
+          email: string
+          phone?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          barber_id?: string
+          name?: string
+          email?: string
+          phone?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       services: {
         Row: {
           id: string

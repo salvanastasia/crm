@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -11,17 +10,23 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/components/auth-context"
+
+const MIN_PASSWORD_LEN = 6
 
 export function RegisterForm() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const router = useRouter()
   const supabase = getSupabaseBrowserClient()
-  const { toast } = useToast()
+  const { addToast } = useToast()
+  const { register } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,33 +34,28 @@ export function RegisterForm() {
     setError(null)
     setSuccessMessage(null)
 
+    if (password.length < MIN_PASSWORD_LEN) {
+      setError(`La password deve avere almeno ${MIN_PASSWORD_LEN} caratteri.`)
+      setIsLoading(false)
+      return
+    }
+    if (password !== confirmPassword) {
+      setError("Le password non coincidono.")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      if (!supabase) {
-        setError("Config Supabase mancante")
-        return
+      const result = await register(name, email, password)
+
+      if (result.success) {
+        setSuccessMessage(result.message)
+        if (result.pendingConfirmation) {
+          setTimeout(() => router.push("/login"), 2500)
+        }
+      } else {
+        setError(result.message)
       }
-
-      const { error: signInError } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?name=${encodeURIComponent(name)}`,
-          data: {
-            name,
-            role: "client",
-          },
-        },
-      })
-
-      if (signInError) {
-        setError(signInError.message)
-        return
-      }
-
-      setSuccessMessage("Ti abbiamo inviato una email con il Magic Link per completare la registrazione.")
-
-      setTimeout(() => {
-        router.push("/login")
-      }, 2500)
     } catch (err) {
       console.error("Errore durante la registrazione:", err)
       setError("Si è verificato un errore durante la registrazione. Riprova più tardi.")
@@ -74,7 +74,7 @@ export function RegisterForm() {
       setSocialLoading(provider)
       setError(null)
 
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -85,12 +85,12 @@ export function RegisterForm() {
         },
       })
 
-      if (error) {
-        setError(error.message)
-        toast({
+      if (oauthError) {
+        setError(oauthError.message)
+        addToast({
           title: "Errore di autenticazione",
-          description: error.message,
-          variant: "destructive",
+          description: oauthError.message,
+          type: "error",
         })
       }
     } catch (err) {
@@ -134,10 +134,35 @@ export function RegisterForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+            minLength={MIN_PASSWORD_LEN}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Conferma password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            autoComplete="new-password"
+            minLength={MIN_PASSWORD_LEN}
           />
         </div>
         <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Invio in corso..." : "Invia Magic Link"}
+          {isLoading ? "Registrazione in corso..." : "Crea account"}
         </Button>
       </form>
 
@@ -146,7 +171,7 @@ export function RegisterForm() {
           <span className="w-full border-t" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Oppure continua con</span>
+          <span className="bg-gray-50 px-2 text-gray-500">Oppure continua con</span>
         </div>
       </div>
 
@@ -188,13 +213,19 @@ export function RegisterForm() {
         </Button>
       </div>
 
-      <div className="text-center text-sm">
-        Hai già un account?{" "}
-        <Link href="/login" className="text-indigo-600 hover:text-indigo-800">
-          Accedi
-        </Link>
+      <div className="space-y-2 text-center text-sm text-gray-600">
+        <div>
+          Hai già un account?{" "}
+          <Link href="/login" className="text-indigo-600 hover:text-indigo-800">
+            Accedi
+          </Link>
+        </div>
+        <div>
+          <Link href="/signup" className="text-indigo-600 hover:text-indigo-800">
+            Registrazione nella app
+          </Link>
+        </div>
       </div>
     </div>
   )
 }
-

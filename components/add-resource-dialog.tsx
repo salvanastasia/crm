@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { useAuth } from "@/components/auth-context"
 import { addResource, getServices } from "@/lib/actions"
 import type { Service } from "@/lib/types"
 
@@ -20,6 +21,8 @@ interface AddResourceDialogProps {
 }
 
 export function AddResourceDialog({ open, onOpenChange }: AddResourceDialogProps) {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
@@ -32,20 +35,22 @@ export function AddResourceDialog({ open, onOpenChange }: AddResourceDialogProps
 
   useEffect(() => {
     const loadServices = async () => {
-      const data = await getServices()
+      if (!barberId) return
+      const data = await getServices(barberId)
       setServices(data)
     }
 
-    if (open) {
-      loadServices()
+    if (open && barberId) {
+      void loadServices()
     }
-  }, [open])
+  }, [open, barberId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
     try {
+      if (!barberId) return
       await addResource({
         name,
         email,
@@ -55,6 +60,7 @@ export function AddResourceDialog({ open, onOpenChange }: AddResourceDialogProps
         isActive,
         serviceIds: selectedServices,
         imageUrl: "",
+        barberId,
       })
 
       // Reset form

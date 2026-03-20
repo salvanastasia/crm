@@ -1,10 +1,12 @@
 "use client"
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js"
+import { createBrowserClient } from "@supabase/ssr"
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 let browserClient: SupabaseClient | null = null
 
-export function getSupabaseBrowserClient() {
+/** Browser client: persists session in cookies so server actions see the same user. */
+export function getSupabaseBrowserClient(): SupabaseClient | null {
   if (browserClient) return browserClient
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -14,13 +16,6 @@ export function getSupabaseBrowserClient() {
     return null
   }
 
-  browserClient = createClient(url, anonKey, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
-  })
-
+  browserClient = createBrowserClient(url, anonKey)
   return browserClient
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from "@/components/auth-context"
 import { addClient } from "@/lib/actions"
 
 interface AddClientDialogProps {
@@ -16,6 +17,8 @@ interface AddClientDialogProps {
 }
 
 export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
@@ -27,11 +30,13 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
     setIsSubmitting(true)
 
     try {
+      if (!barberId) return
       await addClient({
         name,
         email,
         phone,
         notes,
+        barberId,
       })
 
       // Reset form

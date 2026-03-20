@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Search, User, LogOut } from "lucide-react"
+import { Search, User, LogOut, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,27 +21,12 @@ import { getBrandSettings } from "@/lib/actions"
 import { useAuth } from "@/components/auth-context"
 import type { BrandSettings } from "@/lib/types"
 
-const navItems = [
-  {
-    name: "Dashboard",
-    href: "/",
-  },
-  {
-    name: "Clienti",
-    href: "/clienti",
-  },
-  {
-    name: "Servizi",
-    href: "/servizi",
-  },
-  {
-    name: "Risorse",
-    href: "/risorse",
-  },
-  {
-    name: "Calendario",
-    href: "/calendario",
-  },
+const staffNavItems = [
+  { name: "Dashboard", href: "/" },
+  { name: "Clienti", href: "/clienti" },
+  { name: "Servizi", href: "/servizi" },
+  { name: "Risorse", href: "/risorse" },
+  { name: "Calendario", href: "/calendario" },
 ]
 
 export function Header() {
@@ -50,15 +35,20 @@ export function Header() {
   const [settings, setSettings] = useState<BrandSettings | null>(null)
   const { user, isAuthenticated, logout } = useAuth()
 
+  const isStaff = user && (user.role === "admin" || user.role === "staff")
+  const isClient = user?.role === "client"
+
+  const isClientBookingFlow = isClient && pathname.startsWith("/booking")
+
   useEffect(() => {
     const loadSettings = async () => {
-      const data = await getBrandSettings()
+      const barberId = user?.barberId ?? "barber-1"
+      const data = await getBrandSettings(barberId)
       setSettings(data)
     }
 
-    loadSettings()
+    void loadSettings()
 
-    // Aggiungi un event listener per l'evento personalizzato
     const handleSettingsUpdate = (e: CustomEvent<BrandSettings>) => {
       setSettings(e.detail)
     }
@@ -68,11 +58,67 @@ export function Header() {
     return () => {
       window.removeEventListener("brandSettingsUpdated", handleSettingsUpdate as EventListener)
     }
-  }, [])
+  }, [user?.barberId])
 
   const handleLogout = () => {
     logout()
     router.push("/login")
+  }
+
+  const brandLabel = settings?.businessName || "Barber CRM"
+
+  /** Client booking: solo logo, tema, utente — niente CRM */
+  if (isAuthenticated && isClientBookingFlow) {
+    return (
+      <header className="border-b bg-background">
+        <div className="max-w-3xl mx-auto w-full px-4">
+          <div className="flex h-14 items-center justify-between">
+            <Link href="/booking" className="flex items-center gap-2 min-w-0">
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarImage src={settings?.logoUrl || ""} alt="" />
+                <AvatarFallback>
+                  <User className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              <span className="font-semibold truncate">{brandLabel}</span>
+            </Link>
+            <div className="flex items-center gap-2 shrink-0">
+              <ModeToggle />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="" />
+                      <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.name}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/booking" className="flex items-center">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Prenota
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Esci
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      </header>
+    )
   }
 
   return (
@@ -80,19 +126,19 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
+            <Link href={isStaff ? "/" : isClient ? "/booking" : "/"} className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={settings?.logoUrl || ""} alt="Logo" />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
-              <span className="font-semibold">{settings?.businessName || "Barber CRM"}</span>
-            </div>
+              <span className="font-semibold">{brandLabel}</span>
+            </Link>
 
-            {isAuthenticated && (
+            {isAuthenticated && isStaff && (
               <nav className="hidden md:flex items-center space-x-4">
-                {navItems.map((item) => (
+                {staffNavItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -109,7 +155,7 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
-            {isAuthenticated && (
+            {isAuthenticated && isStaff && (
               <div className="relative hidden md:block w-64">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input type="search" placeholder="Cerca..." className="w-full pl-8 bg-background" />
@@ -136,13 +182,24 @@ export function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Profilo</DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Link href="/impostazioni" className="w-full">
-                      Impostazioni
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  {isClient && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/booking">Prenota</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
+                  {isStaff && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/impostazioni" className="w-full">
+                          Impostazioni
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     Esci
@@ -160,4 +217,3 @@ export function Header() {
     </header>
   )
 }
-

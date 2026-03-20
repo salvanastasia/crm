@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { syncProfileFromAuthUser } from "@/lib/profile-sync"
 
 function AuthCallbackContent() {
   const router = useRouter()
@@ -19,7 +20,8 @@ function AuthCallbackContent() {
       const code = searchParams.get("code")
       const tokenHash = searchParams.get("token_hash")
       const type = searchParams.get("type")
-      const next = searchParams.get("next") || "/"
+      const nextParam = searchParams.get("next")
+      const defaultNext = "/"
 
       try {
         if (code) {
@@ -40,20 +42,34 @@ function AuthCallbackContent() {
           return
         }
 
-        const fallbackName =
-          (session.user.user_metadata?.name as string | undefined) ||
-          searchParams.get("name") ||
-          (session.user.email ? session.user.email.split("@")[0] : "Utente")
+        let pendingRole: "admin" | "client" | undefined
+        if (typeof window !== "undefined") {
+          const raw = sessionStorage.getItem("barber_crm_signup_role")
+          if (raw === "admin" || raw === "client") {
+            pendingRole = raw
+            sessionStorage.removeItem("barber_crm_signup_role")
+          }
+        }
 
-        await supabase.from("profiles").upsert(
-          {
-            id: session.user.id,
-            email: session.user.email ?? "",
-            name: fallbackName,
-            role: "client",
-          },
-          { onConflict: "id" },
-        )
+        const user = await syncProfileFromAuthUser(supabase, session.user, {
+          pendingRole,
+        })
+        if (!user) {
+          setMessage("Impossibile sincronizzare il profilo. Riprova.")
+          return
+        }
+
+        let next = nextParam || defaultNext
+        if (next !== "/" && !next.startsWith("/")) {
+          next = defaultNext
+        }
+        if (user.role === "client") {
+          next = "/booking"
+        } else if (user.role === "admin" && !user.barberId) {
+          next = "/onboarding"
+        } else if (user.role === "admin" || user.role === "staff") {
+          next = "/"
+        }
 
         router.replace(next)
       } catch (error) {

@@ -9,28 +9,33 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { HexColorPicker } from "react-colorful"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { useAuth } from "@/components/auth-context"
 import { getBrandSettings, updateBrandSettings } from "@/lib/actions"
 import type { BrandSettings as BrandSettingsType } from "@/lib/types"
 
 export function BrandSettings() {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [settings, setSettings] = useState<BrandSettingsType>({
     businessName: "",
     brandColor: "#4f46e5",
     logoUrl: "",
+    barberId: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
   useEffect(() => {
+    if (!barberId) return
     const loadSettings = async () => {
-      const data = await getBrandSettings()
+      const data = await getBrandSettings(barberId)
       if (data) {
         setSettings(data)
       }
     }
 
-    loadSettings()
-  }, [])
+    void loadSettings()
+  }, [barberId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,7 +43,8 @@ export function BrandSettings() {
     setIsSaved(false)
 
     try {
-      await updateBrandSettings(settings)
+      if (!barberId) return
+      await updateBrandSettings({ ...settings, barberId })
       setIsSaved(true)
 
       // Applica il colore del brand alle variabili CSS

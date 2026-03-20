@@ -18,10 +18,13 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { EditResourceDialog } from "@/components/edit-resource-dialog"
+import { useAuth } from "@/components/auth-context"
 import { getResources, deleteResource, getServices } from "@/lib/actions"
 import type { Resource, Service } from "@/lib/types"
 
 export function ResourceList() {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [resources, setResources] = useState<Resource[]>([])
   const [filteredResources, setFilteredResources] = useState<Resource[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -32,16 +35,22 @@ export function ResourceList() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
+    if (!barberId) {
+      setResources([])
+      setFilteredResources([])
+      setServices([])
+      return
+    }
     const loadData = async () => {
-      const resourcesData = await getResources()
-      const servicesData = await getServices()
+      const resourcesData = await getResources(barberId)
+      const servicesData = await getServices(barberId)
       setResources(resourcesData)
       setFilteredResources(resourcesData)
       setServices(servicesData)
     }
 
-    loadData()
-  }, [])
+    void loadData()
+  }, [barberId])
 
   useEffect(() => {
     if (searchQuery.trim() === "") {

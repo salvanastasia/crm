@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/components/auth-context"
 import { getBusinessHours, updateBusinessHours } from "@/lib/actions"
 import type { BusinessHours as BusinessHoursType } from "@/lib/types"
 
@@ -28,6 +29,8 @@ const TIME_OPTIONS = Array.from({ length: 24 * 2 }).map((_, i) => {
 })
 
 export function BusinessHours() {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [hours, setHours] = useState<BusinessHoursType>({
     monday: { isOpen: true, open: "09:00", close: "18:00" },
     tuesday: { isOpen: true, open: "09:00", close: "18:00" },
@@ -41,15 +44,16 @@ export function BusinessHours() {
   const [isSaved, setIsSaved] = useState(false)
 
   useEffect(() => {
+    if (!barberId) return
     const loadHours = async () => {
-      const data = await getBusinessHours()
+      const data = await getBusinessHours(barberId)
       if (data) {
         setHours(data)
       }
     }
 
-    loadHours()
-  }, [])
+    void loadHours()
+  }, [barberId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,7 +61,8 @@ export function BusinessHours() {
     setIsSaved(false)
 
     try {
-      await updateBusinessHours(hours)
+      if (!barberId) return
+      await updateBusinessHours(hours, barberId)
       setIsSaved(true)
 
       setTimeout(() => {

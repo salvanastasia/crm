@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Header } from "@/components/header"
+import { AppShell } from "@/components/app-shell"
 import { AuthProvider } from "@/components/auth-context"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -24,10 +24,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-background`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <AuthProvider>
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
-            </div>
+            <AppShell>{children}</AppShell>
           </AuthProvider>
         </ThemeProvider>
       </body>

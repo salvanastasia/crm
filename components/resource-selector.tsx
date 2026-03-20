@@ -10,6 +10,7 @@ import { getResources } from "@/lib/actions"
 import type { Resource } from "@/lib/types"
 
 interface ResourceSelectorProps {
+  barberId: string
   serviceId: string
   selectedResource: Resource | null
   onSelectResource: (resource: Resource) => void
@@ -18,6 +19,7 @@ interface ResourceSelectorProps {
 }
 
 export function ResourceSelector({
+  barberId,
   serviceId,
   selectedResource,
   onSelectResource,
@@ -31,8 +33,7 @@ export function ResourceSelector({
     const loadResources = async () => {
       setIsLoading(true)
       try {
-        const allResources = await getResources()
-        // Filtra le risorse che possono fornire il servizio selezionato
+        const allResources = await getResources(barberId)
         const filteredResources = allResources.filter(
           (resource) => resource.isActive && resource.serviceIds?.includes(serviceId),
         )
@@ -44,10 +45,10 @@ export function ResourceSelector({
       }
     }
 
-    if (serviceId) {
-      loadResources()
+    if (serviceId && barberId) {
+      void loadResources()
     }
-  }, [serviceId])
+  }, [serviceId, barberId])
 
   if (isLoading) {
     return (

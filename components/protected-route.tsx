@@ -20,7 +20,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       if (!isAuthenticated) {
         router.push("/login")
       } else if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-        router.push("/") // Reindirizza alla home se l'utente non ha i permessi necessari
+        if (user.role === "client") {
+          router.push("/booking")
+        } else {
+          router.push("/")
+        }
       }
     }
   }, [isAuthenticated, isLoading, router, allowedRoles, user])

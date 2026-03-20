@@ -109,3 +109,6 @@ export interface StaffMember {
   barberId: string
 }
 
+/** Registrazione: cliente (prenotazioni) o titolare che creerà il salone */
+export type SignupIntent = "client" | "salon_owner"
+

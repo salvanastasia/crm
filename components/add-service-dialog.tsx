@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useAuth } from "@/components/auth-context"
 import { addService } from "@/lib/actions"
 
 interface AddServiceDialogProps {
@@ -15,6 +16,8 @@ interface AddServiceDialogProps {
 }
 
 export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [name, setName] = useState("")
   const [duration, setDuration] = useState("")
   const [price, setPrice] = useState("")
@@ -26,11 +29,13 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
     setIsSubmitting(true)
 
     try {
+      if (!barberId) return
       await addService({
         name,
-        duration: Number.parseInt(duration),
+        duration: Number.parseInt(duration, 10),
         price: Number.parseFloat(price),
         comparePrice: comparePrice ? Number.parseFloat(comparePrice) : undefined,
+        barberId,
       })
 
       // Reset form

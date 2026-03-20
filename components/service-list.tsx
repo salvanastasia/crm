@@ -15,10 +15,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { EditServiceDialog } from "@/components/edit-service-dialog"
+import { useAuth } from "@/components/auth-context"
 import { getServices, deleteService } from "@/lib/actions"
 import type { Service } from "@/lib/types"
 
 export function ServiceList() {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [services, setServices] = useState<Service[]>([])
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null)
   const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null)
@@ -26,13 +29,17 @@ export function ServiceList() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
+    if (!barberId) {
+      setServices([])
+      return
+    }
     const loadServices = async () => {
-      const data = await getServices()
+      const data = await getServices(barberId)
       setServices(data)
     }
 
-    loadServices()
-  }, [])
+    void loadServices()
+  }, [barberId])
 
   const handleDelete = async () => {
     if (serviceToDelete) {

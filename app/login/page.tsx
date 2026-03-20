@@ -8,17 +8,40 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/components/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const { login } = useAuth()
+  const { login, loginWithPassword } = useAuth()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const result = await loginWithPassword(email, password)
+
+      if (result.success) {
+        setSuccess(result.message)
+      } else {
+        setError(result.message)
+      }
+    } catch {
+      setError("Si è verificato un errore durante l'accesso")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
@@ -29,13 +52,12 @@ export default function LoginPage() {
 
       if (result.success) {
         setSuccess(result.message)
-        setIsLoading(false)
       } else {
         setError(result.message)
-        setIsLoading(false)
       }
-    } catch (err) {
+    } catch {
       setError("Si è verificato un errore durante l'accesso")
+    } finally {
       setIsLoading(false)
     }
   }
@@ -45,7 +67,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Accedi</CardTitle>
-          <CardDescription>Inserisci la tua email: ti inviamo un Magic Link per accedere</CardDescription>
+          <CardDescription>Email e password, oppure richiedi un link via email</CardDescription>
         </CardHeader>
         <CardContent>
           {error && (
@@ -58,25 +80,69 @@ export default function LoginPage() {
               <AlertDescription className="text-green-800">{success}</AlertDescription>
             </Alert>
           )}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="nome@esempio.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Invio in corso..." : "Invia Magic Link"}
-            </Button>
-          </form>
+          <Tabs defaultValue="password" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="password">Password</TabsTrigger>
+              <TabsTrigger value="magic">Link email</TabsTrigger>
+            </TabsList>
+            <TabsContent value="password" className="mt-4">
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="nome@esempio.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Link href="/reset-password" className="text-sm text-primary hover:underline">
+                      Password dimenticata?
+                    </Link>
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Accesso in corso..." : "Accedi"}
+                </Button>
+              </form>
+            </TabsContent>
+            <TabsContent value="magic" className="mt-4">
+              <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email-magic">Email</Label>
+                  <Input
+                    id="email-magic"
+                    type="email"
+                    placeholder="nome@esempio.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? "Invio in corso..." : "Invia Magic Link"}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </CardContent>
-        <CardFooter className="flex flex-col">
-          <div className="text-sm text-center text-muted-foreground mt-2">
+        <CardFooter className="flex flex-col gap-3">
+          <div className="text-sm text-center text-muted-foreground">
             Non hai un account?{" "}
             <Link href="/signup" className="text-primary hover:underline">
               Registrati

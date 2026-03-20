@@ -16,10 +16,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { EditClientDialog } from "@/components/edit-client-dialog"
+import { useAuth } from "@/components/auth-context"
 import { getClients, deleteClient } from "@/lib/actions"
 import type { Client } from "@/lib/types"
 
 export function ClientList() {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [clients, setClients] = useState<Client[]>([])
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -29,14 +32,19 @@ export function ClientList() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
+    if (!barberId) {
+      setClients([])
+      setFilteredClients([])
+      return
+    }
     const loadClients = async () => {
-      const data = await getClients()
+      const data = await getClients(barberId)
       setClients(data)
       setFilteredClients(data)
     }
 
-    loadClients()
-  }, [])
+    void loadClients()
+  }, [barberId])
 
   useEffect(() => {
     if (searchQuery.trim() === "") {

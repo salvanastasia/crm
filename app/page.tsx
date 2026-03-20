@@ -23,6 +23,8 @@ export default function Dashboard() {
       } else if (user?.role === "client") {
         // Reindirizza i clienti alla pagina di prenotazione
         router.push("/booking")
+      } else if (user?.role === "admin" && !user.barberId) {
+        router.push("/onboarding")
       }
     }
   }, [isAuthenticated, isLoading, router, user])

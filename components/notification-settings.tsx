@@ -8,10 +8,13 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth } from "@/components/auth-context"
 import { getNotificationSettings, updateNotificationSettings } from "@/lib/actions"
 import type { NotificationSettings as NotificationSettingsType } from "@/lib/types"
 
 export function NotificationSettings() {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [settings, setSettings] = useState<NotificationSettingsType>({
     emailEnabled: true,
     smsEnabled: false,
@@ -19,20 +22,24 @@ export function NotificationSettings() {
       "Gentile {cliente},\n\nTi confermiamo l'appuntamento per {servizio} il giorno {data} alle ore {ora}.\n\nGrazie,\n{negozio}",
     smsTemplate: "Conferma appuntamento: {servizio} il {data} alle {ora}. {negozio}",
     reminderHours: 24,
+    barberId: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
 
   useEffect(() => {
+    if (!barberId) return
     const loadSettings = async () => {
-      const data = await getNotificationSettings()
+      const data = await getNotificationSettings(barberId)
       if (data) {
         setSettings(data)
+      } else {
+        setSettings((prev) => ({ ...prev, barberId }))
       }
     }
 
-    loadSettings()
-  }, [])
+    void loadSettings()
+  }, [barberId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,7 +47,8 @@ export function NotificationSettings() {
     setIsSaved(false)
 
     try {
-      await updateNotificationSettings(settings)
+      if (!barberId) return
+      await updateNotificationSettings({ ...settings, barberId })
       setIsSaved(true)
 
       setTimeout(() => {

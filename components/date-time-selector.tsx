@@ -11,6 +11,7 @@ import { getBusinessHours } from "@/lib/actions"
 import type { BusinessHours } from "@/lib/types"
 
 interface DateTimeSelectorProps {
+  barberId: string
   selectedDate: Date | null
   selectedTime: string | null
   onSelectDate: (date: Date) => void
@@ -20,6 +21,7 @@ interface DateTimeSelectorProps {
 }
 
 export function DateTimeSelector({
+  barberId,
   selectedDate,
   selectedTime,
   onSelectDate,
@@ -36,10 +38,11 @@ export function DateTimeSelector({
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startDate, i))
 
   useEffect(() => {
+    if (!barberId) return
     const loadBusinessHours = async () => {
       setIsLoading(true)
       try {
-        const hours = await getBusinessHours()
+        const hours = await getBusinessHours(barberId)
         setBusinessHours(hours)
       } catch (error) {
         console.error("Error loading business hours:", error)
@@ -48,8 +51,8 @@ export function DateTimeSelector({
       }
     }
 
-    loadBusinessHours()
-  }, [])
+    void loadBusinessHours()
+  }, [barberId])
 
   useEffect(() => {
     if (selectedDate && businessHours) {

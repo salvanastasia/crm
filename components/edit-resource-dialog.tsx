@@ -65,9 +65,12 @@ export function EditResourceDialog({
         isActive,
         serviceIds: selectedServices,
         imageUrl: resource.imageUrl,
+        barberId: resource.barberId,
       })
 
-      onResourceUpdated(updatedResource)
+      if (updatedResource) {
+        onResourceUpdated(updatedResource)
+      }
     } catch (error) {
       console.error("Error updating resource:", error)
     } finally {

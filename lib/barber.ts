@@ -1,11 +1,11 @@
 "use server"
 
-import { cookies } from "next/headers"
-import { createServerActionClient } from "./mock-helpers"
+import { createSupabaseServerClient } from "@/lib/supabase/server"
 import type { Barber } from "./types"
 
 export async function getBarbers(): Promise<Barber[]> {
-  const instant = createServerActionClient({ cookies })
+  const instant = await createSupabaseServerClient()
+  if (!instant) return []
 
   try {
     const { data, error } = await instant.from("barbers").select("*")
@@ -15,7 +15,7 @@ export async function getBarbers(): Promise<Barber[]> {
       return []
     }
 
-    return data.map((barber) => ({
+    return (data ?? []).map((barber) => ({
       id: barber.id,
       name: barber.name,
       email: barber.email,
@@ -32,7 +32,8 @@ export async function getBarbers(): Promise<Barber[]> {
 }
 
 export async function getBarberById(id: string): Promise<Barber | null> {
-  const instant = createServerActionClient({ cookies })
+  const instant = await createSupabaseServerClient()
+  if (!instant) return null
 
   try {
     const { data, error } = await instant.from("barbers").select("*").eq("id", id).single()
@@ -67,7 +68,8 @@ export async function createBarber(barberData: {
   businessName: string
   ownerId: string
 }): Promise<Barber | null> {
-  const instant = createServerActionClient({ cookies })
+  const instant = await createSupabaseServerClient()
+  if (!instant) return null
 
   try {
     const { data, error } = await instant
@@ -116,7 +118,8 @@ export async function createBarber(barberData: {
 }
 
 export async function updateBarber(barberData: Barber): Promise<Barber | null> {
-  const instant = createServerActionClient({ cookies })
+  const instant = await createSupabaseServerClient()
+  if (!instant) return null
 
   try {
     const { data, error } = await instant
@@ -154,11 +157,16 @@ export async function updateBarber(barberData: Barber): Promise<Barber | null> {
   }
 }
 
+/**
+ * Multi-shop: collega un cliente a un salone specifico (es. scelta da lista).
+ * In modalità single-shop l’app usa `linkClientToDefaultSalonIfNeeded` + `getDefaultBarberId`.
+ */
 export async function associateClientWithBarber(
   clientId: string,
   barberId: string,
 ): Promise<{ success: boolean; message: string }> {
-  const instant = createServerActionClient({ cookies })
+  const instant = await createSupabaseServerClient()
+  if (!instant) return { success: false, message: "Database non configurato" }
 
   try {
     const { error } = await instant

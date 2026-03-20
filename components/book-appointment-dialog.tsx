@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/components/auth-context"
 import { bookAppointment, getServices, getResources } from "@/lib/actions"
 import type { Service, Resource } from "@/lib/types"
 
@@ -21,6 +22,8 @@ interface BookAppointmentDialogProps {
 }
 
 export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAppointmentDialogProps) {
+  const { user } = useAuth()
+  const barberId = user?.barberId
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
@@ -32,17 +35,16 @@ export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAp
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
+    if (!open || !barberId) return
     const loadData = async () => {
-      const servicesData = await getServices()
-      const resourcesData = await getResources()
+      const servicesData = await getServices(barberId)
+      const resourcesData = await getResources(barberId)
       setServices(servicesData)
       setResources(resourcesData)
     }
 
-    if (open) {
-      loadData()
-    }
-  }, [open])
+    void loadData()
+  }, [open, barberId])
 
   // Filtra le risorse disponibili in base al servizio selezionato
   useEffect(() => {
@@ -67,7 +69,9 @@ export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAp
     setIsSubmitting(true)
 
     try {
-      await bookAppointment({
+      if (!barberId) return
+      const res = await bookAppointment({
+        barberId,
         clientName: name,
         clientEmail: email,
         clientPhone: phone,
@@ -76,6 +80,10 @@ export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAp
         date,
         time,
       })
+      if (!res.success) {
+        console.error(res.message)
+        return
+      }
 
       onOpenChange(false)
 

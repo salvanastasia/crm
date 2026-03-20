@@ -45,9 +45,13 @@ export function EditClientDialog({ client, open, onOpenChange, onClientUpdated }
         email,
         phone,
         notes,
+        barberId: client.barberId,
+        appointmentsCount: client.appointmentsCount,
       })
 
-      onClientUpdated(updatedClient)
+      if (updatedClient) {
+        onClientUpdated(updatedClient)
+      }
     } catch (error) {
       console.error("Error updating client:", error)
     } finally {

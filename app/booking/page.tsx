@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-context"
 import { getBrandSettings, getServices } from "@/lib/actions"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { linkClientToDefaultSalonIfNeeded } from "@/lib/link-default-salon"
 import { ServiceSelector } from "@/components/service-selector"
 import { ResourceSelector } from "@/components/resource-selector"
 import { DateTimeSelector } from "@/components/date-time-selector"
@@ -15,7 +17,7 @@ import { Steps, Step } from "@/components/ui/steps"
 import type { Service, Resource, BrandSettings } from "@/lib/types"
 
 export default function BookingPage() {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, refreshProfile } = useAuth()
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
   const [brandSettings, setBrandSettings] = useState<BrandSettings | null>(null)
@@ -28,11 +30,13 @@ export default function BookingPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const loadData = async () => {
+    if (!isAuthenticated || user?.role !== "client") return
+
+    const loadBookingData = async (barberId: string) => {
       setIsLoading(true)
       try {
-        const settings = await getBrandSettings()
-        const servicesData = await getServices()
+        const settings = await getBrandSettings(barberId)
+        const servicesData = await getServices(barberId)
         setBrandSettings(settings)
         setServices(servicesData)
       } catch (error) {
@@ -42,10 +46,33 @@ export default function BookingPage() {
       }
     }
 
-    if (isAuthenticated && user?.role === "client") {
-      loadData()
+    if (user.barberId) {
+      void loadBookingData(user.barberId)
+      return
     }
-  }, [isAuthenticated, user])
+
+    let cancelled = false
+    setIsLoading(true)
+    ;(async () => {
+      const supabase = getSupabaseBrowserClient()
+      if (!supabase) {
+        setIsLoading(false)
+        return
+      }
+      const linked = await linkClientToDefaultSalonIfNeeded(supabase, user.id, "client", undefined)
+      if (cancelled) return
+      if (linked) {
+        await refreshProfile()
+        if (!cancelled) await loadBookingData(linked)
+      } else {
+        setIsLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, user?.id, user?.role, user?.barberId, refreshProfile])
 
   useEffect(() => {
     // Reimposta la risorsa selezionata quando cambia il servizio
@@ -99,6 +126,22 @@ export default function BookingPage() {
     )
   }
 
+  if (!user.barberId && !isLoading) {
+    return (
+      <div className="w-full py-10">
+        <Card className="max-w-lg mx-auto">
+          <CardHeader>
+            <CardTitle>Salon non configurato</CardTitle>
+            <CardDescription>
+              Non risulta nessuna attività collegata. Aggiungi un barbiere in Supabase o imposta{" "}
+              <code className="text-xs">NEXT_PUBLIC_DEFAULT_BARBER_ID</code> nel file env.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
       <div className="container mx-auto py-10">
@@ -115,7 +158,7 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="w-full py-2 md:py-4">
       <div className="mb-8 text-center">
         <div className="flex justify-center mb-4">
           {brandSettings?.logoUrl ? (
@@ -134,7 +177,7 @@ export default function BookingPage() {
         <p className="text-muted-foreground mt-2">Prenota il tuo appuntamento</p>
       </div>
 
-      <Card className="max-w-3xl mx-auto">
+      <Card className="w-full max-w-2xl mx-auto shadow-sm">
         <CardHeader>
           <Steps currentStep={currentStep} className="mb-4">
             <Step title="Servizio" />
@@ -154,8 +197,9 @@ export default function BookingPage() {
             />
           )}
 
-          {currentStep === 1 && (
+          {currentStep === 1 && user.barberId && (
             <ResourceSelector
+              barberId={user.barberId}
               serviceId={selectedService?.id || ""}
               selectedResource={selectedResource}
               onSelectResource={setSelectedResource}
@@ -164,8 +208,9 @@ export default function BookingPage() {
             />
           )}
 
-          {currentStep === 2 && (
+          {currentStep === 2 && user.barberId && (
             <DateTimeSelector
+              barberId={user.barberId}
               selectedDate={selectedDate}
               selectedTime={selectedTime}
               onSelectDate={setSelectedDate}

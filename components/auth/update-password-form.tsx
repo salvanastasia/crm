@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { createClientComponentClient } from "@/lib/mock-helpers"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,7 +17,7 @@ export function UpdatePasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const supabase = createClientComponentClient()
+  const supabase = getSupabaseBrowserClient()
 
   // Ottieni il token dalla URL
   const token = searchParams.get("token")
@@ -35,7 +35,10 @@ export function UpdatePasswordForm() {
     }
 
     try {
-      // Usa il token per aggiornare la password
+      if (!supabase) {
+        setError("Config Supabase mancante")
+        return
+      }
       const { error } = await supabase.auth.updateUser({
         password: password,
       })
