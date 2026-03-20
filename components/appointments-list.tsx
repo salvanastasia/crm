@@ -1,30 +1,55 @@
+// Appuntamenti di oggi: dati reali da Supabase (non mock)
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { useEffect, useMemo, useState } from "react"
+import { format } from "date-fns"
+import { useAuth } from "@/components/auth-context"
+import { getAppointments, getClientAppointments } from "@/lib/actions"
+import type { Appointment } from "@/lib/types"
 
 export function AppointmentsList() {
-  const appointments = [
-    {
-      id: 1,
-      client: "Marco Rossi",
-      service: "Taglio + Barba",
-      time: "10:00",
-      status: "confermato",
-    },
-    {
-      id: 2,
-      client: "Luca Bianchi",
-      service: "Taglio Capelli",
-      time: "11:30",
-      status: "confermato",
-    },
-    {
-      id: 3,
-      client: "Giuseppe Verdi",
-      service: "Barba",
-      time: "14:00",
-      status: "in attesa",
-    },
-  ]
+  const { user } = useAuth()
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const todayKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), [])
+
+  useEffect(() => {
+    if (!user) return
+
+    const load = async () => {
+      setLoading(true)
+      try {
+        if (user.role === "client") {
+          const rows = await getClientAppointments(user.id)
+          setAppointments(rows)
+          return
+        }
+
+        if (user.barberId) {
+          const rows = await getAppointments(user.barberId)
+          setAppointments(rows)
+          return
+        }
+
+        setAppointments([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void load()
+  }, [user?.id, user?.role, user?.barberId])
+
+  const todaysAppointments = useMemo(() => {
+    return appointments.filter((a) => {
+      if (!a.date) return false
+      const key = typeof a.date === "string" ? a.date : format(a.date, "yyyy-MM-dd")
+      return key === todayKey
+    })
+  }, [appointments, todayKey])
 
   return (
     <Card>
@@ -33,19 +58,25 @@ export function AppointmentsList() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {appointments.length === 0 ? (
+          {loading ? (
+            <p className="text-center text-muted-foreground">Caricamento...</p>
+          ) : todaysAppointments.length === 0 ? (
             <p className="text-center text-muted-foreground">Nessun appuntamento per oggi</p>
           ) : (
-            appointments.map((appointment) => (
+            todaysAppointments.map((appointment) => (
               <div key={appointment.id} className="flex flex-col space-y-2 border-b pb-4 last:border-0">
                 <div className="flex justify-between items-center">
-                  <div className="font-medium">{appointment.client}</div>
-                  <Badge variant={appointment.status === "confermato" ? "default" : "outline"}>
+                  <div className="font-medium">{appointment.clientName}</div>
+                  <Badge
+                    variant={
+                      appointment.status === "confirmed" ? "default" : appointment.status === "cancelled" ? "destructive" : "outline"
+                    }
+                  >
                     {appointment.status}
                   </Badge>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {appointment.service} - {appointment.time}
+                  {appointment.serviceName} - {appointment.time}
                 </div>
               </div>
             ))

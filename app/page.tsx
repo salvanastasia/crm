@@ -6,7 +6,6 @@ import { CalendarIcon, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DashboardStats } from "@/components/dashboard-stats"
-import { DashboardTabs } from "@/components/dashboard-tabs"
 import { RevenueChart } from "@/components/revenue-chart"
 import { RecentAppointments } from "@/components/recent-appointments"
 import { useAuth } from "@/components/auth-context"
@@ -59,8 +58,6 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
-
-      <DashboardTabs />
 
       <DashboardStats />
 

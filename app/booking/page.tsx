@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/auth-context"
 import { getBrandSettings, getServices } from "@/lib/actions"
+import { bookAppointment } from "@/lib/actions"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { linkClientToDefaultSalonIfNeeded } from "@/lib/link-default-salon"
 import { ServiceSelector } from "@/components/service-selector"
@@ -28,6 +29,8 @@ export default function BookingPage() {
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isBookingConfirming, setIsBookingConfirming] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "client") return
@@ -88,10 +91,38 @@ export default function BookingPage() {
   }
 
   const handleConfirmBooking = async () => {
-    // Qui implementeremo la logica per confermare la prenotazione
-    // Per ora, mostriamo solo un messaggio di successo
-    alert("Prenotazione confermata con successo!")
-    router.push("/")
+    if (!user?.barberId) return
+    if (!selectedService || !selectedResource || !selectedDate || !selectedTime || !paymentMethod) return
+
+    setIsBookingConfirming(true)
+    setBookingError(null)
+
+    try {
+      const res = await bookAppointment({
+        barberId: user.barberId,
+        clientName: user.name,
+        clientEmail: user.email,
+        clientPhone: user.phone ?? "",
+        serviceId: selectedService.id,
+        resourceId: selectedResource.id,
+        date: selectedDate,
+        time: selectedTime,
+        paymentMethod: paymentMethod as "card" | "paypal" | "cash" | null,
+      })
+
+      if (!res.success) {
+        setBookingError(res.message)
+        return
+      }
+
+      // Dopo l'inserimento, mostra il calendario aggiornato.
+      router.push("/calendario")
+      router.refresh?.()
+    } catch (error) {
+      setBookingError(error instanceof Error ? error.message : "Errore durante la prenotazione")
+    } finally {
+      setIsBookingConfirming(false)
+    }
   }
 
   if (!isAuthenticated) {
@@ -238,7 +269,14 @@ export default function BookingPage() {
               paymentMethod={paymentMethod}
               onConfirm={handleConfirmBooking}
               onBack={handlePrevStep}
+              isConfirming={isBookingConfirming}
             />
+          )}
+
+          {bookingError && currentStep === 4 && (
+            <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+              {bookingError}
+            </div>
           )}
         </CardContent>
       </Card>

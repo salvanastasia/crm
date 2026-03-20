@@ -1,19 +1,24 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns"
+import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns"
 import { it } from "date-fns/locale"
 import { BookAppointmentDialog } from "@/components/book-appointment-dialog"
+import { useAuth } from "@/components/auth-context"
+import { getAppointments, getClientAppointments } from "@/lib/actions"
+import type { Appointment } from "@/lib/types"
 
 export function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false)
+  const { user } = useAuth()
+  const [appointments, setAppointments] = useState<Appointment[]>([])
 
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 })
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(startDate, i))
@@ -40,18 +45,38 @@ export function Calendar() {
     "18:00",
   ]
 
-  // Simulate some booked slots
-  const bookedSlots = [
-    { date: new Date(), time: "10:00" },
-    { date: new Date(), time: "10:30" },
-    { date: new Date(), time: "14:00" },
-    { date: addDays(new Date(), 1), time: "11:00" },
-    { date: addDays(new Date(), 1), time: "15:30" },
-  ]
+  const dateKey = (d: Date | string) => {
+    // `appointments.date` is stored in DB as YYYY-MM-DD
+    if (typeof d === "string") return d
+    return format(d, "yyyy-MM-dd")
+  }
 
   const isSlotBooked = (date: Date, time: string) => {
-    return bookedSlots.some((slot) => isSameDay(slot.date, date) && slot.time === time)
+    const key = dateKey(date)
+    return appointments.some((a) => a.date && dateKey(a.date) === key && a.time === time && a.status !== "cancelled")
   }
+
+  useEffect(() => {
+    if (!user) return
+    const load = async () => {
+      try {
+        if (user.role === "client") {
+          const rows = await getClientAppointments(user.id)
+          setAppointments(rows)
+        } else if (user.barberId) {
+          const rows = await getAppointments(user.barberId)
+          setAppointments(rows)
+        } else {
+          setAppointments([])
+        }
+      } catch (e) {
+        console.error("Failed to load appointments:", e)
+        setAppointments([])
+      }
+    }
+
+    void load()
+  }, [user?.id, user?.role, user?.barberId])
 
   const handlePreviousWeek = () => {
     setCurrentDate(subWeeks(currentDate, 1))

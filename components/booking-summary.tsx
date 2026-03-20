@@ -16,6 +16,7 @@ interface BookingSummaryProps {
   paymentMethod: string | null
   onConfirm: () => void
   onBack: () => void
+  isConfirming?: boolean
 }
 
 export function BookingSummary({
@@ -26,6 +27,7 @@ export function BookingSummary({
   paymentMethod,
   onConfirm,
   onBack,
+  isConfirming = false,
 }: BookingSummaryProps) {
   if (!service || !resource || !date || !time || !paymentMethod) {
     return (
@@ -145,7 +147,9 @@ export function BookingSummary({
         <Button onClick={onBack} variant="outline">
           Indietro
         </Button>
-        <Button onClick={onConfirm}>Conferma prenotazione</Button>
+        <Button onClick={onConfirm} disabled={isConfirming}>
+          {isConfirming ? "Prenotazione in corso..." : "Conferma prenotazione"}
+        </Button>
       </div>
     </div>
   )
