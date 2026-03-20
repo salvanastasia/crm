@@ -1,0 +1,21 @@
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"checkAuth:getSession:start","data":{},"timestamp":1773994331564}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:start","data":{"hasSupabase":true},"timestamp":1773994331591}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:start","data":{"hasSupabase":true},"timestamp":1773994331594}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:done","data":{"hasUser":false,"role":null,"hasBarberId":false},"timestamp":1773994337310}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:done","data":{"hasUser":true,"role":"admin","hasBarberId":true},"timestamp":1773994337987}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"checkAuth:getSession:start","data":{},"timestamp":1773994341835}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"checkAuth:getSession:done","data":{"hasSession":true,"hasSessionUser":true},"timestamp":1773994341888}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:start","data":{"hasSupabase":true},"timestamp":1773994341888}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:done","data":{"hasUser":true,"role":"admin","hasBarberId":true},"timestamp":1773994342641}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"C","location":"components/service-list.tsx","message":"loadServices:start","data":{"hasBarberId":true},"timestamp":1773994344519}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"C","location":"components/service-list.tsx","message":"loadServices:start","data":{"hasBarberId":true},"timestamp":1773994344519}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"C","location":"components/service-list.tsx","message":"loadServices:done","data":{"count":4},"timestamp":1773994344848}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"C","location":"components/service-list.tsx","message":"loadServices:done","data":{"count":4},"timestamp":1773994345002}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"E","location":"components/add-service-dialog.tsx","message":"addService:submit","data":{"hasBarberId":true,"nameLen":4},"timestamp":1773994355767}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"E","location":"lib/actions.ts:addService","message":"addService:start","data":{"barberIdPresent":true,"nameLen":4},"timestamp":1773994355811}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"E","location":"components/add-service-dialog.tsx","message":"addService:result","data":{"hasCreated":true,"createdId":"a2d23cbe-2bb4-4c7b-8028-828a51d6709f"},"timestamp":1773994356101}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"B","location":"components/add-service-dialog.tsx","message":"dispatch servicesUpdated","data":{"barberId":"a517b373-9915-4a0e-93e8-bc96b2c531f8"},"timestamp":1773994356101}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"B","location":"components/service-list.tsx","message":"servicesUpdated event","data":{"matches":true},"timestamp":1773994356101}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:start","data":{"hasSupabase":true},"timestamp":1773994364758}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:start","data":{"hasSupabase":true},"timestamp":1773994364758}
+{"sessionId":"dd094c","runId":"pre-fix","hypothesisId":"A","location":"components/auth-context.tsx","message":"upsertAndLoadProfile:done","data":{"hasUser":true,"role":"admin","hasBarberId":true},"timestamp":1773994370737}

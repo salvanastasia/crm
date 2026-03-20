@@ -41,6 +41,21 @@ export function ServiceList() {
     void loadServices()
   }, [barberId])
 
+  useEffect(() => {
+    if (!barberId) return
+    const onServicesUpdated = (evt: Event) => {
+      const detail = (evt as CustomEvent<{ barberId?: string }>).detail
+      if (detail?.barberId && detail.barberId !== barberId) return
+      void (async () => {
+        const data = await getServices(barberId)
+        setServices(data)
+      })()
+    }
+
+    window.addEventListener("servicesUpdated", onServicesUpdated)
+    return () => window.removeEventListener("servicesUpdated", onServicesUpdated)
+  }, [barberId])
+
   const handleDelete = async () => {
     if (serviceToDelete) {
       await deleteService(serviceToDelete.id)

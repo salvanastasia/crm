@@ -30,7 +30,7 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
 
     try {
       if (!barberId) return
-      await addService({
+      const created = await addService({
         name,
         duration: Number.parseInt(duration, 10),
         price: Number.parseFloat(price),
@@ -45,8 +45,8 @@ export function AddServiceDialog({ open, onOpenChange }: AddServiceDialogProps) 
       setComparePrice("")
       onOpenChange(false)
 
-      // Reload page to show new service
-      window.location.reload()
+      // Notify the list to refetch (avoid full page reload -> "Caricamento..." hang).
+      window.dispatchEvent(new CustomEvent("servicesUpdated", { detail: { barberId } }))
     } catch (error) {
       console.error("Error adding service:", error)
     } finally {
