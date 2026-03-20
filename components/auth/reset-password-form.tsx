@@ -15,10 +15,34 @@ export function ResetPasswordForm() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
   const supabase = getSupabaseBrowserClient()
+
+  const getCooldownSecondsLeft = () => {
+    if (!cooldownUntil) return 0
+    const msLeft = cooldownUntil - Date.now()
+    return msLeft > 0 ? Math.ceil(msLeft / 1000) : 0
+  }
+
+  const parseWaitSecondsFromError = (message: string): number | null => {
+    // Esempi:
+    // "For security purposes, you can only request this after 10 seconds."
+    // "For security purposes, you can only request this after 29 seconds."
+    const m = message.match(/after\s+(\d+)\s+second/i)
+    if (!m) return null
+    const n = Number(m[1])
+    return Number.isFinite(n) ? n : null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const secondsLeft = getCooldownSecondsLeft()
+    if (secondsLeft > 0) {
+      setError(`Riprova tra ${secondsLeft} secondi (richieste troppo ravvicinate).`)
+      return
+    }
+
     setIsLoading(true)
     setError(null)
     setSuccessMessage(null)
@@ -33,13 +57,22 @@ export function ResetPasswordForm() {
       })
 
       if (error) {
-        setError(error.message)
+        const waitSeconds = parseWaitSecondsFromError(error.message)
+        if (waitSeconds != null) {
+          setCooldownUntil(Date.now() + waitSeconds * 1000)
+          setError(`Hai effettuato richieste troppo ravvicinate. Attendi ${waitSeconds} secondi e riprova.`)
+        } else {
+          setError(error.message)
+        }
         return
       }
 
       setSuccessMessage(
-        "Ti abbiamo inviato un'email con le istruzioni per reimpostare la password. Controlla la tua casella di posta.",
+        "Ti abbiamo inviato un'email con le istruzioni per reimpostare la password. Controlla la tua casella di posta e lo spam.",
       )
+
+      // Anti-spam UX: evita click ripetuti che spesso vengono rate-limitati da Supabase.
+      setCooldownUntil(Date.now() + 15 * 1000)
     } catch (err) {
       console.error("Errore durante il reset della password:", err)
       setError("Si è verificato un errore durante l'invio dell'email di recupero. Riprova più tardi.")
@@ -72,8 +105,16 @@ export function ResetPasswordForm() {
             required
           />
         </div>
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Invio in corso..." : "Invia link di recupero"}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isLoading || getCooldownSecondsLeft() > 0}
+        >
+          {isLoading
+            ? "Invio in corso..."
+            : getCooldownSecondsLeft() > 0
+              ? `Attendi ${getCooldownSecondsLeft()}s...`
+              : "Invia link di recupero"}
         </Button>
       </form>
       <div className="text-center text-sm">

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/components/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -18,7 +19,14 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const { login, loginWithPassword } = useAuth()
+  const searchParams = useSearchParams()
+  const messageFromQuery = searchParams.get("message")
+  const { loginWithPassword } = useAuth()
+
+  // Mostra il messaggio di ritorno (es. dopo update password).
+  useEffect(() => {
+    if (messageFromQuery) setSuccess(messageFromQuery)
+  }, [messageFromQuery])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,27 +36,6 @@ export default function LoginPage() {
 
     try {
       const result = await loginWithPassword(email, password)
-
-      if (result.success) {
-        setSuccess(result.message)
-      } else {
-        setError(result.message)
-      }
-    } catch {
-      setError("Si è verificato un errore durante l'accesso")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleMagicLinkSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError(null)
-    setSuccess(null)
-
-    try {
-      const result = await login(email)
 
       if (result.success) {
         setSuccess(result.message)
@@ -81,9 +68,8 @@ export default function LoginPage() {
             </Alert>
           )}
           <Tabs defaultValue="password" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-1">
               <TabsTrigger value="password">Password</TabsTrigger>
-              <TabsTrigger value="magic">Link email</TabsTrigger>
             </TabsList>
             <TabsContent value="password" className="mt-4">
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
@@ -117,25 +103,6 @@ export default function LoginPage() {
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Accesso in corso..." : "Accedi"}
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="magic" className="mt-4">
-              <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-magic">Email</Label>
-                  <Input
-                    id="email-magic"
-                    type="email"
-                    placeholder="nome@esempio.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Invio in corso..." : "Invia Magic Link"}
                 </Button>
               </form>
             </TabsContent>

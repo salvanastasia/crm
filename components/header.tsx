@@ -42,8 +42,8 @@ export function Header() {
 
   useEffect(() => {
     const loadSettings = async () => {
-      const barberId = user?.barberId ?? "barber-1"
-      const data = await getBrandSettings(barberId)
+      const barberId = user?.barberId
+      const data = barberId ? await getBrandSettings(barberId) : null
       setSettings(data)
     }
 

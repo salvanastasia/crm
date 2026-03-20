@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
+import { usePathname, useRouter } from "next/navigation"
 import type { AuthState, User } from "@/lib/types"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { syncProfileFromAuthUser } from "@/lib/profile-sync"
@@ -16,8 +16,6 @@ export type RegisterResult = {
 }
 
 interface AuthContextType extends AuthState {
-  /** Magic Link via email */
-  login: (email: string) => Promise<{ success: boolean; message: string }>
   loginWithPassword: (email: string, password: string) => Promise<{ success: boolean; message: string }>
   register: (name: string, email: string, password: string) => Promise<RegisterResult>
   logout: () => Promise<void>
@@ -35,7 +33,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: null,
   })
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = getSupabaseBrowserClient()
+  const authMutationInFlightRef = useRef(false)
+  const pathnameRef = useRef<string | null>(null)
+  pathnameRef.current = pathname ?? null
+
+  const isNavigatorLockRaceError = (error: unknown) => {
+    const name = (error as any)?.name
+    const msg = String((error as any)?.message ?? "")
+    // Supabase/Auth (GoTrue) può emettere errori transitori quando più richieste contendono
+    // lo stesso "navigator lock" (token refresh / getSession / signIn).
+    return (
+      name?.includes("NavigatorLock") ||
+      msg.includes("NavigatorLockAcquireTimeoutError") ||
+      msg.includes("another request stole it") ||
+      msg.includes("was released because another request stole it")
+    )
+  }
 
   const upsertAndLoadProfile = useCallback(
     async (sessionUser: SupabaseUser): Promise<User | null> => {
@@ -47,9 +62,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshProfile = useCallback(async () => {
     if (!supabase) return
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    let session
+    try {
+      const {
+        data: { session: s },
+      } = await supabase.auth.getSession()
+      session = s
+    } catch (error) {
+      const name = (error as any)?.name
+      const msg = (error as any)?.message
+      if (name === "NavigatorLockAcquireTimeoutError" || String(msg ?? "").includes("NavigatorLockAcquireTimeoutError")) return
+      console.error("refreshProfile:getSession error:", error)
+      return
+    }
     if (!session) return
     const user = await upsertAndLoadProfile(session.user)
     if (user) {
@@ -75,6 +100,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const checkAuth = async () => {
+      const currentPath =
+        pathnameRef.current ?? (typeof window !== "undefined" ? window.location.pathname : "")
+      // Evita race: mentre stiamo facendo sign-in/sign-up, non chiamiamo `getSession()`
+      // (che può contendere lo stesso token lock).
+      if (
+        authMutationInFlightRef.current ||
+        currentPath.startsWith("/update-password") ||
+        currentPath.startsWith("/auth/callback")
+      )
+        return
       try {
         const {
           data: { session },
@@ -106,13 +141,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
         }
       } catch (error) {
+        if (isNavigatorLockRaceError(error)) {
+          // Non resettare lo stato auth: potrebbe essere in corso un SIGNED_IN che
+          // aggiornerà poi `authState` via onAuthStateChange.
+          setAuthState((prev) => ({ ...prev, isLoading: false, error: null }))
+          return
+        }
+
         console.error("Errore durante il controllo dell'autenticazione:", error)
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
+        setAuthState((prev) => ({
+          ...prev,
           isLoading: false,
+          isAuthenticated: false,
+          user: null,
           error: "Errore durante il controllo dell'autenticazione",
-        })
+        }))
       }
     }
 
@@ -120,6 +163,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_IN" && session) {
+        const currentPath =
+          pathnameRef.current ?? (typeof window !== "undefined" ? window.location.pathname : "")
+
+        // Durante /update-password evitiamo sync di `profiles` (può fallire per RLS
+        // in questa fase) e soprattutto evitiamo redirect automatici.
+        if (currentPath.startsWith("/update-password") || currentPath.startsWith("/auth/callback")) {
+          setAuthState({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null,
+          })
+          return
+        }
+
         const user = await upsertAndLoadProfile(session.user)
         if (user) {
           setAuthState({
@@ -129,13 +187,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: null,
           })
 
+          let target: string
           if (user.role === "client") {
-            router.push("/booking")
+            target = "/booking"
           } else if (user.role === "admin" && !user.barberId) {
-            router.push("/onboarding")
+            target = "/onboarding"
           } else {
-            router.push("/")
+            target = "/"
           }
+          if (pathname !== target) router.push(target)
         }
       } else if (event === "SIGNED_OUT") {
         setAuthState({
@@ -144,7 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false,
           error: null,
         })
-        router.push("/login")
+        const currentPath = pathnameRef.current ?? (typeof window !== "undefined" ? window.location.pathname : "")
+        if (currentPath !== "/login") router.push("/login")
       }
     })
 
@@ -155,49 +216,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase, router, upsertAndLoadProfile])
 
-  const login = async (email: string) => {
-    if (!supabase) {
-      return { success: false, message: "Config Supabase mancante" }
-    }
-    setAuthState((prev) => ({ ...prev, isLoading: true, error: null }))
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      })
-
-      if (error) {
-        setAuthState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: error.message,
-        })
-        return { success: false, message: error.message }
-      }
-
-      setAuthState((prev) => ({ ...prev, isLoading: false, error: null }))
-      return { success: true, message: "Ti abbiamo inviato un link di accesso via email." }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Errore durante l'accesso"
-      setAuthState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: errorMessage,
-      })
-
-      return { success: false, message: errorMessage }
-    }
-  }
-
   const loginWithPassword = async (email: string, password: string) => {
     if (!supabase) {
       return { success: false, message: "Config Supabase mancante" }
     }
+    authMutationInFlightRef.current = true
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
@@ -224,6 +247,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: errorMessage,
       })
       return { success: false, message: errorMessage }
+    } finally {
+      authMutationInFlightRef.current = false
     }
   }
 
@@ -231,6 +256,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) {
       return { success: false, message: "Config Supabase mancante" }
     }
+    authMutationInFlightRef.current = true
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }))
 
     try {
@@ -238,7 +264,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          // Per email/password-only: dopo conferma email vai alla pagina login,
+          // evitando `/auth/callback` (che gestisce OTP/magic link).
+          emailRedirectTo: `${window.location.origin}/login`,
           data: {
             name,
           },
@@ -284,11 +312,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { success: false, message: errorMessage }
     }
+    finally {
+      authMutationInFlightRef.current = false
+    }
   }
 
   const logout = async () => {
     try {
       if (!supabase) return
+      authMutationInFlightRef.current = true
       await supabase.auth.signOut()
 
       setAuthState({
@@ -301,12 +333,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push("/login")
     } catch (error) {
       console.error("Errore durante il logout:", error)
+    } finally {
+      authMutationInFlightRef.current = false
     }
   }
 
   const value = {
     ...authState,
-    login,
     loginWithPassword,
     register,
     logout,

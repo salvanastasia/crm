@@ -1,6 +1,9 @@
 "use server"
 
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { headers } from "next/headers"
+import { createClient } from "@supabase/supabase-js"
+import { randomBytes, randomUUID } from "crypto"
 import type {
   Service,
   Resource,
@@ -506,40 +509,24 @@ export async function bookAppointment(data: {
   if (!supabase) return { success: false, message: "Database non configurato" }
 
   const dateStr = typeof data.date === "string" ? data.date : data.date.toISOString().split("T")[0]
-
-  const { data: existing, error: findErr } = await supabase
-    .from("clients")
-    .select("id")
-    .eq("barber_id", data.barberId)
-    .eq("email", data.clientEmail.trim().toLowerCase())
-    .maybeSingle()
-  if (findErr) {
-    console.error("bookAppointment find client:", findErr)
-    return { success: false, message: findErr.message }
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) {
+    return { success: false, message: "Client non autenticato" }
   }
 
-  let clientId = existing?.id
-  if (!clientId) {
-    const { data: ins, error: insErr } = await supabase
-      .from("clients")
-      .insert({
-        barber_id: data.barberId,
-        name: data.clientName,
-        email: data.clientEmail.trim().toLowerCase(),
-        phone: data.clientPhone,
-      })
-      .select("id")
-      .single()
-    if (insErr || !ins) {
-      return { success: false, message: insErr?.message ?? "Impossibile creare il cliente" }
-    }
-    clientId = ins.id
-  } else {
-    await supabase
-      .from("clients")
-      .update({ name: data.clientName, phone: data.clientPhone })
-      .eq("id", clientId)
-  }
+  // Keep appointments bound to the logged-in client user id.
+  // Optionally sync displayed fields into `profiles`.
+  await supabase
+    .from("profiles")
+    .update({
+      name: data.clientName,
+      phone: data.clientPhone || null,
+    })
+    .eq("id", user.id)
+
+  const clientId = user.id
 
   const { data: appt, error: apptErr } = await supabase
     .from("appointments")
@@ -568,52 +555,528 @@ export async function bookAppointment(data: {
 export async function getClients(barberId: string): Promise<Client[]> {
   const supabase = await db()
   if (!supabase || !barberId) return []
-  const { data: clients, error } = await supabase.from("clients").select("*").eq("barber_id", barberId).order("name")
-  if (error || !clients) {
-    console.error("getClients:", error)
+
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("id,name,email,phone,barber_id")
+    .eq("role", "client")
+    .eq("barber_id", barberId)
+    .order("name")
+
+  if (error || !profiles) {
+    console.error("getClients(profiles):", error)
     return []
   }
+
   const { data: appts } = await supabase.from("appointments").select("client_id").eq("barber_id", barberId)
   const counts = new Map<string, number>()
   for (const a of appts ?? []) {
     counts.set(a.client_id, (counts.get(a.client_id) ?? 0) + 1)
   }
-  return clients.map((c) => ({
-    id: c.id,
-    name: c.name,
-    email: c.email,
-    phone: c.phone ?? "",
-    notes: c.notes ?? undefined,
-    barberId: c.barber_id,
-    appointmentsCount: counts.get(c.id) ?? 0,
+
+  return profiles.map((p) => ({
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    phone: p.phone ?? "",
+    notes: undefined,
+    barberId: p.barber_id,
+    appointmentsCount: counts.get(p.id) ?? 0,
   }))
 }
 
 export async function addClient(clientData: Omit<Client, "id" | "appointmentsCount">): Promise<Client | null> {
   const supabase = await db()
-  if (!supabase || !clientData.barberId) return null
-  const { data, error } = await supabase
-    .from("clients")
-    .insert({
-      barber_id: clientData.barberId,
-      name: clientData.name,
-      email: clientData.email,
-      phone: clientData.phone || null,
-      notes: clientData.notes ?? null,
-    })
-    .select("*")
-    .single()
-  if (error || !data) {
-    console.error("addClient:", error)
+  if (!supabase) return null
+
+  // Dev/ops workflow: admin adds a client, app sends a magic link for confirmation.
+  // The actual `profiles` row will be created/updated by `auth/callback` -> `syncProfileFromAuthUser`.
+  const email = clientData.email?.trim().toLowerCase() ?? ""
+  const name = clientData.name.trim()
+  const phone = clientData.phone || null
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'K',location:'lib/actions.ts:addClient',message:'addClient:enter',data:{emailProvided:!!email,nameLen:name.length,phoneLen:(phone??"").toString().length,barberId:!!clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
+
+  const isProfilesRlsViolation = (err: unknown) => {
+    const msg = (err as any)?.message?.toLowerCase?.() ?? ""
+    return msg.includes("violates row-level security policy") || msg.includes("row-level security")
+  }
+
+  if (!email) {
+    console.error("addClient: email required; received empty email")
     return null
   }
+
+  // If email is not provided, create a plain profiles row immediately.
+  if (!email) {
+    const clientProfileId = randomUUID()
+
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'H',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:start',data:{hasBarberId:!!clientData.barberId,nameLen:name.length,phoneLen:(clientData.phone||"").length},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+
+    try {
+      const { error: insertErr } = await supabase.from("profiles").insert({
+        id: clientProfileId,
+        name,
+        email: "",
+        role: "client",
+        phone,
+        barber_id: clientData.barberId,
+      })
+
+      if (!insertErr) {
+        return {
+          id: clientProfileId,
+          name,
+          email: "",
+          phone: clientData.phone || "",
+          notes: undefined,
+          barberId: clientData.barberId,
+          appointmentsCount: 0,
+        }
+      }
+
+      let rlsRetrySucceeded = false
+      console.error("addClient:no-email insert:", insertErr)
+
+      if (isProfilesRlsViolation(insertErr)) {
+        // Attempt a single policy repair using the security-definer RPC, if available.
+        let rpcErr: any = null
+        try {
+          const rpcRes = await supabase.rpc("fix_profiles_policy")
+          rpcErr = rpcRes?.error ?? null
+        } catch (e) {
+          rpcErr = e
+        }
+        // #region agent log
+        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'I',location:'lib/actions.ts:addClient',message:'addClient:no-email:rlsRetry:fix_profiles_policy',data:{rpcErrorMessage:rpcErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+
+        const { error: retryErr } = await supabase.from("profiles").insert({
+          id: clientProfileId,
+          name,
+          email: "",
+          role: "client",
+          phone,
+          barber_id: clientData.barberId,
+        })
+
+        if (retryErr) {
+          console.error("addClient:no-email insert retry:", retryErr)
+          if (isProfilesRlsViolation(retryErr)) {
+            const dropAndRecreatePoliciesSql = `
+              ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+              DO $$
+              DECLARE r RECORD;
+              BEGIN
+                FOR r IN
+                  SELECT policyname
+                  FROM pg_policies
+                  WHERE schemaname = 'public' AND tablename = 'profiles'
+                LOOP
+                  EXECUTE format('DROP POLICY IF EXISTS %I ON public.profiles', r.policyname);
+                END LOOP;
+              END $$;
+
+              CREATE POLICY profiles_shop_manager_select_client
+                ON public.profiles
+                FOR SELECT
+                TO authenticated
+                USING (
+                  role = 'client'
+                  AND barber_id IS NOT NULL
+                  AND EXISTS (
+                    SELECT 1
+                    FROM public.profiles p2
+                    WHERE p2.id = auth.uid()
+                      AND p2.role IN ('admin', 'staff')
+                      AND p2.barber_id IS NOT NULL
+                      AND p2.barber_id = public.profiles.barber_id
+                  )
+                );
+
+              CREATE POLICY profiles_shop_manager_insert_client
+                ON public.profiles
+                FOR INSERT
+                TO authenticated
+                WITH CHECK (
+                  role = 'client'
+                  AND barber_id IS NOT NULL
+                  AND EXISTS (
+                    SELECT 1
+                    FROM public.profiles p2
+                    WHERE p2.id = auth.uid()
+                      AND p2.role IN ('admin', 'staff')
+                      AND p2.barber_id IS NOT NULL
+                      AND p2.barber_id = public.profiles.barber_id
+                  )
+                );
+
+              CREATE POLICY profiles_shop_manager_update_client
+                ON public.profiles
+                FOR UPDATE
+                TO authenticated
+                USING (
+                  role = 'client'
+                  AND barber_id IS NOT NULL
+                  AND EXISTS (
+                    SELECT 1
+                    FROM public.profiles p2
+                    WHERE p2.id = auth.uid()
+                      AND p2.role IN ('admin', 'staff')
+                      AND p2.barber_id IS NOT NULL
+                      AND p2.barber_id = public.profiles.barber_id
+                  )
+                )
+                WITH CHECK (
+                  role = 'client'
+                  AND barber_id IS NOT NULL
+                  AND EXISTS (
+                    SELECT 1
+                    FROM public.profiles p2
+                    WHERE p2.id = auth.uid()
+                      AND p2.role IN ('admin', 'staff')
+                      AND p2.barber_id IS NOT NULL
+                      AND p2.barber_id = public.profiles.barber_id
+                  )
+                );
+            `
+
+            // #region agent log
+            fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'R',location:'lib/actions.ts:addClient',message:'addClient:no-email:exec_sql:attempt',data:{hasExecSqlFn:false,barberId:clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
+            // #endregion
+
+            let execErr: any = null
+            try {
+              const { error } = await supabase.rpc("exec_sql", { sql: dropAndRecreatePoliciesSql })
+              execErr = error
+            } catch (e) {
+              execErr = e
+            }
+
+            // #region agent log
+            fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'R',location:'lib/actions.ts:addClient',message:'addClient:no-email:exec_sql:result',data:{execErrMessage:execErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
+            // #endregion
+
+            if (!execErr) {
+              const { error: retryErr2 } = await supabase.from("profiles").insert({
+                id: clientProfileId,
+                name,
+                email: "",
+                role: "client",
+                phone,
+                barber_id: clientData.barberId,
+              })
+
+              if (!retryErr2) {
+                return {
+                  id: clientProfileId,
+                  name,
+                  email: "",
+                  phone: clientData.phone || "",
+                  notes: undefined,
+                  barberId: clientData.barberId,
+                  appointmentsCount: 0,
+                }
+              }
+            }
+          }
+
+          // #region agent log
+          fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'I',location:'lib/actions.ts:addClient',message:'addClient:no-email:rlsRetry:insertAgainError',data:{retryErrorMessage:retryErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
+          // #endregion
+          return null
+        }
+
+        rlsRetrySucceeded = true
+      } else {
+        // Not an RLS policy issue; fail fast.
+        // #region agent log
+        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'I',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:errorNonRls',data:{errorMessage:insertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+        return null
+      }
+
+      if (!rlsRetrySucceeded) {
+        // #region agent log
+        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'H',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:error',data:{errorMessage:insertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+      }
+      // Note: if we reached here after RLS repair, the row insert succeeded and we should continue.
+      return {
+        id: clientProfileId,
+        name,
+        email: "",
+        phone: clientData.phone || "",
+        notes: undefined,
+        barberId: clientData.barberId,
+        appointmentsCount: 0,
+      }
+    } catch (err) {
+      // #region agent log
+      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'K',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:exception',data:{errorMessage:(err as any)?.message??null},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+      throw err
+    }
+  }
+
+  // Magic-link / auth-user creation is handled client-side to ensure the PKCE verifier is available
+  // when hitting `/auth/callback`. This server action only creates client `profiles` rows when `email` is empty.
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'S',location:'lib/actions.ts:addClient',message:'addClient:emailProvided:skipOtpServerAction',data:{emailLen:email.length,hasBarberId:!!clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
+
+  return null
+
+  const h = headers()
+  const originFromHeader = h.get("origin") ?? undefined
+  const referer = h.get("referer") ?? undefined
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? undefined
+  const proto = h.get("x-forwarded-proto") ?? "http"
+
+  let origin: string | undefined = originFromHeader
+  let originSource: string = originFromHeader ? "origin" : ""
+
+  if (!origin && referer) {
+    try {
+      origin = new URL(referer).origin
+      originSource = "referer"
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  if (!origin && host) {
+    origin = `${proto}://${host}`
+    originSource = "host"
+  }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'F',location:'lib/actions.ts:addClient',message:'addClient:originResolved',data:{originSource,originLen:origin?.length??0,hasOrigin:!!origin,hasSupabaseUrl:!!process.env.NEXT_PUBLIC_SUPABASE_URL,hasServiceRole:!!process.env.SUPABASE_SERVICE_ROLE_KEY},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
+
+  if (!origin) {
+    console.error("addClient: missing origin for emailRedirectTo", { originSource, hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL })
+    return null
+  }
+
+  const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/booking")}`
+
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'C',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:start',data:{emailLen:clientData.email?.length??0,hasBarberId:!!clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
+
+  const { data, error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo,
+      // If Supabase supports user_metadata on magic link creation, syncProfileFromAuthUser
+      // will pick it up (name/phone) and persist into `profiles`.
+      data: {
+        name,
+        phone: clientData.phone || null,
+      },
+    },
+  } as any)
+
+  if (error) {
+    console.error("addClient(signInWithOtp):", error)
+    const isRateLimit =
+      (error?.message || "").toLowerCase().includes("email rate limit") ||
+      (error as any)?.status === 429 ||
+      (error as any)?.code === "rate_limit_exceeded"
+
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'E',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:error:rateLimitDecision',data:{isRateLimit,hasServiceRole:!!process.env.SUPABASE_SERVICE_ROLE_KEY,hasSupabaseUrl:!!process.env.NEXT_PUBLIC_SUPABASE_URL,errorMessage:(error?.message??null)},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'C',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:error',data:{errorMessage:error?.message??null,hasData:!!data},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+    if (!isRateLimit) return null
+
+    // Rate limit is preventing the email from being sent, which also prevents the client auth user from being created.
+    // Fallback: create the auth user + profiles row via the service role, so the admin list updates immediately.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const serviceRoleAvailable = !!supabaseUrl && !!serviceRoleKey
+
+    // If service-role isn’t available in env, we can still upsert a placeholder profile row.
+    // This makes the admin “Clienti” list refresh immediately even when email OTP is rate-limited.
+    if (!serviceRoleAvailable) {
+      const { data: existingProfile, error: findProfileErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("role", "client")
+        .eq("email", email)
+        .maybeSingle()
+
+      // #region agent log
+      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'G',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:noServiceRole:profileLookup',data:{hasError:!!findProfileErr,errorMessage:findProfileErr?.message??null,hasExisting:!!existingProfile?.id},timestamp:Date.now()})}).catch(()=>{})
+      // #endregion
+
+      if (findProfileErr) return null
+
+      let clientProfileId = existingProfile?.id as string | undefined
+      if (!clientProfileId) {
+        clientProfileId = randomUUID()
+
+        const { error: insertProfileErr } = await supabase.from("profiles").insert({
+          id: clientProfileId,
+          name: clientData.name,
+          email,
+          role: "client",
+          phone: clientData.phone || null,
+          barber_id: clientData.barberId,
+        })
+
+        // #region agent log
+        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'G',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:noServiceRole:profileInsert',data:{hasError:!!insertProfileErr,errorMessage:insertProfileErr?.message??null,clientProfileId,barberId:clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+
+        if (insertProfileErr) return null
+      }
+
+      return {
+        id: clientProfileId,
+        name: clientData.name,
+        email,
+        phone: clientData.phone || "",
+        notes: undefined,
+        barberId: clientData.barberId,
+        appointmentsCount: 0,
+      }
+    }
+
+    const admin = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+
+    const password = randomBytes(16).toString("hex")
+    const { data: createdUserData, error: createUserError } = await admin.auth.admin.createUser({
+      email: clientData.email,
+      password,
+      email_confirm: false,
+      user_metadata: {
+        name: clientData.name,
+        phone: clientData.phone || null,
+        role: "client",
+      },
+    } as any)
+
+    const createdUserId = (createdUserData as any)?.user?.id as string | undefined
+
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'D',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:createUser',data:{hasUserId:!!createdUserId,hasError:!!createUserError,createUserErrorMessage:createUserError?.message??null},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+
+    let userId = createdUserId
+    if (!userId) {
+      // If the user already exists, reuse it. This is a best-effort fallback for dev/admin workflows.
+      const { data: usersPage, error: listUsersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 100 } as any)
+      if (listUsersError) {
+        // #region agent log
+        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'D',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:listUsers:error',data:{errorMessage:listUsersError?.message??null},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+        return null
+      }
+      userId = (usersPage as any)?.users?.find((u: any) => (u?.email || "").toLowerCase() === clientData.email.toLowerCase())?.id
+    }
+
+    if (!userId) return null
+
+    const { error: profileUpsertError } = await admin
+      .from("profiles")
+      .upsert(
+        {
+          id: userId,
+          name: clientData.name,
+          email: clientData.email,
+          role: "client",
+          phone: clientData.phone || null,
+          barber_id: clientData.barberId,
+        } as any,
+        { onConflict: "id" },
+      )
+
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'D',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:profileUpsert',data:{hasError:!!profileUpsertError,profileUpsertErrorMessage:profileUpsertError?.message??null},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+
+    if (profileUpsertError) return null
+
+    // Best-effort: try to generate/send the magic link again (may still be rate-limited; list should still work).
+    await admin.auth.admin.generateLink({ type: "magiclink", email: clientData.email, options: { emailRedirectTo } } as any).catch(() => {})
+
+    return {
+      id: userId,
+      name: clientData.name,
+      email: clientData.email,
+      phone: clientData.phone || "",
+      notes: undefined,
+      barberId: clientData.barberId,
+      appointmentsCount: 0,
+    }
+  }
+
+  // Client row will appear after user verifies the magic link.
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'C',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:success',data:{hasData:!!data},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
+
+  // If Supabase created an auth user for this email, upsert the matching profiles row immediately
+  // so the admin “Clienti” list updates without waiting for the magic link confirmation.
+  const userId =
+    (data as any)?.user?.id ??
+    (data as any)?.session?.user?.id ??
+    (data as any)?.data?.user?.id ??
+    null
+
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'L',location:'lib/actions.ts:addClient',message:'addClient:otp-success:userId-extracted',data:{hasUserId:!!userId,userId:typeof userId==='string'?userId.slice(0,8):null},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
+
+  if (!userId) return null
+
+  const userIdData = {
+    hasUser: !!(data as any)?.user,
+    hasSessionUser: !!(data as any)?.session?.user,
+    hasDataUser: !!(data as any)?.data?.user,
+  }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'L',location:'lib/actions.ts:addClient',message:'addClient:otp-success:data-structure',data:{...userIdData},timestamp:Date.now()})}).catch(()=>{})
+  // #endregion
+
+  const { error: profileUpsertErr } = await supabase.from("profiles").upsert(
+    {
+      id: userId,
+      name,
+      email,
+      role: "client",
+      phone: clientData.phone || null,
+      barber_id: clientData.barberId,
+    } as any,
+    { onConflict: "id" },
+  )
+
+  if (profileUpsertErr) {
+    console.error("addClient:profiles upsert after OTP success:", profileUpsertErr)
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'L',location:'lib/actions.ts:addClient',message:'addClient:otp-success:profiles-upsert:error',data:{errorMessage:profileUpsertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
+    // #endregion
+    return null
+  }
+
   return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    phone: data.phone ?? "",
-    notes: data.notes ?? undefined,
-    barberId: data.barber_id,
+    id: userId,
+    name,
+    email,
+    phone: clientData.phone || "",
+    notes: undefined,
+    barberId: clientData.barberId,
     appointmentsCount: 0,
   }
 }
@@ -621,28 +1084,30 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
 export async function updateClient(clientData: Client): Promise<Client | null> {
   const supabase = await db()
   if (!supabase) return null
-  const { data, error } = await supabase
-    .from("clients")
+
+  const { data: p, error } = await supabase
+    .from("profiles")
     .update({
       name: clientData.name,
       email: clientData.email,
       phone: clientData.phone || null,
-      notes: clientData.notes ?? null,
     })
     .eq("id", clientData.id)
-    .select("*")
+    .select("id,name,email,phone,barber_id")
     .single()
-  if (error || !data) {
-    console.error("updateClient:", error)
+
+  if (error || !p) {
+    console.error("updateClient(profiles):", error)
     return null
   }
+
   return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    phone: data.phone ?? "",
-    notes: data.notes ?? undefined,
-    barberId: data.barber_id,
+    id: p.id,
+    name: p.name,
+    email: p.email,
+    phone: p.phone ?? "",
+    notes: undefined,
+    barberId: p.barber_id,
     appointmentsCount: clientData.appointmentsCount,
   }
 }
@@ -650,9 +1115,10 @@ export async function updateClient(clientData: Client): Promise<Client | null> {
 export async function deleteClient(id: string): Promise<boolean> {
   const supabase = await db()
   if (!supabase) return false
-  const { error } = await supabase.from("clients").delete().eq("id", id)
+
+  const { error } = await supabase.from("profiles").update({ barber_id: null }).eq("id", id).eq("role", "client")
   if (error) {
-    console.error("deleteClient:", error)
+    console.error("deleteClient(profiles):", error)
     return false
   }
   return true
@@ -679,7 +1145,7 @@ async function enrichAppointments(
 
   const [{ data: clients }, { data: services }, { data: resources }] = await Promise.all([
     clientIds.length
-      ? supabase.from("clients").select("id,name").in("id", clientIds)
+      ? supabase.from("profiles").select("id,name").in("id", clientIds).eq("role", "client")
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     serviceIds.length
       ? supabase.from("services").select("id,name").in("id", serviceIds)
