@@ -1299,3 +1299,136 @@ export async function getDashboardStats(
     activeClientsChangePct: pctChange(curr.activeClientsCount, prev.activeClientsCount),
   }
 }
+
+export async function getRevenueChartSeries(barberId: string, year: number) {
+  const supabase = await db()
+  const monthLabels = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+  if (!supabase || !barberId || !year) return monthLabels.map((name) => ({ name, total: 0 }))
+
+  const yearStart = `${year}-01-01`
+  const yearEnd = `${year}-12-31`
+
+  const { data: appts, error } = await supabase
+    .from("appointments")
+    .select("date, service_id")
+    .eq("barber_id", barberId)
+    .gte("date", yearStart)
+    .lte("date", yearEnd)
+    .eq("payment_status", "paid")
+    .neq("status", "cancelled")
+
+  if (error || !appts) {
+    console.error("getRevenueChartSeries:", error)
+    return monthLabels.map((name) => ({ name, total: 0 }))
+  }
+
+  const totals = Array.from({ length: 12 }, () => 0)
+
+  const serviceIds = [...new Set(appts.map((a) => a.service_id).filter(Boolean))] as string[]
+  if (serviceIds.length === 0) {
+    return monthLabels.map((name, idx) => ({ name, total: totals[idx] }))
+  }
+
+  const { data: services, error: servicesError } = await supabase
+    .from("services")
+    .select("id, price")
+    .eq("barber_id", barberId)
+    .in("id", serviceIds)
+
+  if (servicesError || !services) {
+    console.error("getRevenueChartSeries(services):", servicesError)
+    return monthLabels.map((name, idx) => ({ name, total: totals[idx] }))
+  }
+
+  const priceMap = new Map(services.map((s) => [s.id, Number(s.price)]))
+
+  for (const a of appts) {
+    // appointments.date is expected as 'YYYY-MM-DD'
+    const month = Number(String(a.date).slice(5, 7)) - 1
+    if (month < 0 || month > 11) continue
+    if (!a.service_id) continue
+    totals[month] += priceMap.get(a.service_id) ?? 0
+  }
+
+  return monthLabels.map((name, idx) => ({ name, total: totals[idx] }))
+}
+
+export async function getRecentAppointmentsForDashboard(
+  barberId: string,
+  startDateKey: string,
+  endDateKey: string,
+  limit = 4,
+) {
+  const supabase = await db()
+  if (!supabase || !barberId || !startDateKey || !endDateKey) {
+    return { appointmentsCount: 0, recent: [] as Array<{ id: string; clientName: string; clientEmail: string; initials: string; amount: number }> }
+  }
+
+  const { data: appts, error } = await supabase
+    .from("appointments")
+    .select("id, client_id, service_id, payment_status, status, date, time")
+    .eq("barber_id", barberId)
+    .gte("date", startDateKey)
+    .lte("date", endDateKey)
+    .neq("status", "cancelled")
+    .order("date", { ascending: false })
+    .order("time", { ascending: false })
+
+  if (error || !appts) {
+    console.error("getRecentAppointmentsForDashboard:", error)
+    return { appointmentsCount: 0, recent: [] }
+  }
+
+  const appointmentsCount = appts.length
+  const paidAppts = (appts ?? []).filter((a) => a.payment_status === "paid" && !!a.service_id)
+  const recentPaid = paidAppts.slice(0, limit)
+
+  const serviceIds = [...new Set(recentPaid.map((a) => a.service_id).filter(Boolean))] as string[]
+  const { data: services, error: servicesError } = serviceIds.length
+    ? await supabase.from("services").select("id, price").eq("barber_id", barberId).in("id", serviceIds)
+    : { data: [], error: null }
+
+  if (servicesError) {
+    console.error("getRecentAppointmentsForDashboard(services):", servicesError)
+  }
+
+  const priceMap = new Map((services ?? []).map((s) => [s.id, Number(s.price)]))
+
+  const clientIds = [...new Set(recentPaid.map((a) => a.client_id).filter(Boolean))] as string[]
+  const { data: clients, error: clientsError } = clientIds.length
+    ? await supabase
+        .from("profiles")
+        .select("id, name, email")
+        .eq("role", "client")
+        .eq("barber_id", barberId)
+        .in("id", clientIds)
+    : { data: [], error: null }
+
+  if (clientsError) {
+    console.error("getRecentAppointmentsForDashboard(clients):", clientsError)
+  }
+
+  const clientMap = new Map((clients ?? []).map((c) => [c.id, { name: c.name, email: c.email }]))
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean)
+    if (parts.length === 0) return "?"
+    const first = parts[0]?.[0] ?? ""
+    const second = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : ""
+    return `${first}${second}`.toUpperCase()
+  }
+
+  const recent = recentPaid.map((a) => {
+    const client = clientMap.get(a.client_id) ?? { name: "Cliente", email: "" }
+    const amount = a.service_id ? priceMap.get(a.service_id) ?? 0 : 0
+    return {
+      id: a.id,
+      clientName: client.name,
+      clientEmail: client.email ?? "",
+      initials: getInitials(client.name),
+      amount,
+    }
+  })
+
+  return { appointmentsCount, recent }
+}

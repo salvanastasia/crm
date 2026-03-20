@@ -83,8 +83,7 @@ export default function Dashboard() {
         <Card className="overflow-hidden">
           <CardContent className="p-6">
             <h3 className="text-lg font-medium mb-4">Appuntamenti Recenti</h3>
-            <p className="text-sm text-muted-foreground mb-6">Hai 12 appuntamenti questo mese.</p>
-            <RecentAppointments />
+            <RecentAppointments startDateKey={startDateKey} endDateKey={endDateKey} />
           </CardContent>
         </Card>
       </div>
