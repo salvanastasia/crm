@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { format } from "date-fns"
 import { CalendarIcon, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +14,14 @@ import { useAuth } from "@/components/auth-context"
 export default function Dashboard() {
   const { isAuthenticated, isLoading, user } = useAuth()
   const router = useRouter()
+
+  const now = new Date()
+  const rangeStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const startDateKey = format(rangeStart, "yyyy-MM-dd")
+  const endDateKey = format(rangeEnd, "yyyy-MM-dd")
+  const startLabel = format(rangeStart, "d MMM, yyyy")
+  const endLabel = format(rangeEnd, "d MMM, yyyy")
 
   // Aggiungi reindirizzamento basato sul ruolo utente all'inizio della funzione Dashboard
   useEffect(() => {
@@ -50,7 +59,9 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 bg-background border rounded-md px-3 py-1.5">
             <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">1 Mar, 2025 - 31 Mar, 2025</span>
+            <span className="text-sm">
+              {startLabel} - {endLabel}
+            </span>
           </div>
           <Button variant="outline" size="sm">
             <Download className="mr-2 h-4 w-4" />
@@ -59,7 +70,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <DashboardStats />
+      <DashboardStats startDateKey={startDateKey} endDateKey={endDateKey} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 overflow-hidden">

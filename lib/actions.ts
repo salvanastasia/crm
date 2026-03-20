@@ -1203,3 +1203,99 @@ export async function getClientAppointments(clientId: string): Promise<Appointme
   if (error || !rows || rows.length === 0) return []
   return enrichAppointments(supabase, rows)
 }
+
+export async function getDashboardStats(
+  barberId: string,
+  startDateKey: string,
+  endDateKey: string,
+) {
+  const supabase = await db()
+  if (!supabase || !barberId || !startDateKey || !endDateKey) {
+    return {
+      incassoTotal: 0,
+      appointmentsCount: 0,
+      servicesSoldCount: 0,
+      activeClientsCount: 0,
+      incassoChangePct: 0,
+      appointmentsChangePct: 0,
+      servicesSoldChangePct: 0,
+      activeClientsChangePct: 0,
+    }
+  }
+
+  const start = new Date(`${startDateKey}T00:00:00.000Z`)
+  const end = new Date(`${endDateKey}T00:00:00.000Z`)
+
+  const prevStart = new Date(start)
+  prevStart.setUTCMonth(prevStart.getUTCMonth() - 1)
+
+  const prevEnd = new Date(end)
+  prevEnd.setUTCMonth(prevEnd.getUTCMonth() - 1)
+
+  const prevStartKey = prevStart.toISOString().slice(0, 10)
+  const prevEndKey = prevEnd.toISOString().slice(0, 10)
+
+  type PeriodStats = {
+    incassoTotal: number
+    appointmentsCount: number
+    servicesSoldCount: number
+    activeClientsCount: number
+  }
+
+  const computePeriod = async (rangeStartKey: string, rangeEndKey: string): Promise<PeriodStats> => {
+    const { data: appts, error } = await supabase
+      .from("appointments")
+      .select("client_id, service_id, payment_status, status")
+      .eq("barber_id", barberId)
+      .gte("date", rangeStartKey)
+      .lte("date", rangeEndKey)
+      .neq("status", "cancelled")
+
+    if (error || !appts) {
+      console.error("getDashboardStats(appts):", error)
+      return { incassoTotal: 0, appointmentsCount: 0, servicesSoldCount: 0, activeClientsCount: 0 }
+    }
+
+    const appointmentsCount = appts.length
+    const paidAppts = appts.filter((a) => a.payment_status === "paid")
+
+    const activeClientsCount = new Set(paidAppts.map((a) => a.client_id)).size
+    const servicesSoldCount = paidAppts.filter((a) => !!a.service_id).length
+
+    const paidServiceIds = [...new Set(paidAppts.map((a) => a.service_id).filter(Boolean))] as string[]
+    if (paidServiceIds.length === 0) {
+      return { incassoTotal: 0, appointmentsCount, servicesSoldCount, activeClientsCount }
+    }
+
+    const { data: services, error: servicesError } = await supabase
+      .from("services")
+      .select("id, price")
+      .eq("barber_id", barberId)
+      .in("id", paidServiceIds)
+
+    if (servicesError || !services) {
+      console.error("getDashboardStats(services):", servicesError)
+      return { incassoTotal: 0, appointmentsCount, servicesSoldCount, activeClientsCount }
+    }
+
+    const priceMap = new Map(services.map((s) => [s.id, Number(s.price)]))
+    const incassoTotal = paidAppts.reduce((sum, a) => sum + (a.service_id ? priceMap.get(a.service_id) ?? 0 : 0), 0)
+
+    return { incassoTotal, appointmentsCount, servicesSoldCount, activeClientsCount }
+  }
+
+  const [curr, prev] = await Promise.all([computePeriod(startDateKey, endDateKey), computePeriod(prevStartKey, prevEndKey)])
+
+  const pctChange = (current: number, previous: number) => {
+    if (previous === 0) return current === 0 ? 0 : 100
+    return ((current - previous) / previous) * 100
+  }
+
+  return {
+    ...curr,
+    incassoChangePct: pctChange(curr.incassoTotal, prev.incassoTotal),
+    appointmentsChangePct: pctChange(curr.appointmentsCount, prev.appointmentsCount),
+    servicesSoldChangePct: pctChange(curr.servicesSoldCount, prev.servicesSoldCount),
+    activeClientsChangePct: pctChange(curr.activeClientsCount, prev.activeClientsCount),
+  }
+}
