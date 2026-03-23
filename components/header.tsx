@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Search, User, LogOut, Calendar } from "lucide-react"
+import { User, LogOut, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -155,13 +154,6 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
-            {isAuthenticated && isStaff && (
-              <div className="relative hidden md:block w-64">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input type="search" placeholder="Cerca..." className="w-full pl-8 bg-background" />
-              </div>
-            )}
-
             <ModeToggle />
 
             {isAuthenticated ? (

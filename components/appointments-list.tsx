@@ -9,12 +9,16 @@ import { useAuth } from "@/components/auth-context"
 import { getAppointments, getClientAppointments } from "@/lib/actions"
 import type { Appointment } from "@/lib/types"
 
-export function AppointmentsList() {
+type AppointmentsListProps = {
+  selectedDate?: Date
+}
+
+export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(false)
 
-  const todayKey = useMemo(() => format(new Date(), "yyyy-MM-dd"), [])
+  const selectedDayKey = useMemo(() => format(selectedDate ?? new Date(), "yyyy-MM-dd"), [selectedDate])
 
   useEffect(() => {
     if (!user) return
@@ -43,27 +47,27 @@ export function AppointmentsList() {
     void load()
   }, [user?.id, user?.role, user?.barberId])
 
-  const todaysAppointments = useMemo(() => {
+  const dayAppointments = useMemo(() => {
     return appointments.filter((a) => {
       if (!a.date) return false
       const key = typeof a.date === "string" ? a.date : format(a.date, "yyyy-MM-dd")
-      return key === todayKey
+      return key === selectedDayKey
     })
-  }, [appointments, todayKey])
+  }, [appointments, selectedDayKey])
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Appuntamenti di Oggi</CardTitle>
+        <CardTitle>Appuntamenti del Giorno</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {loading ? (
             <p className="text-center text-muted-foreground">Caricamento...</p>
-          ) : todaysAppointments.length === 0 ? (
-            <p className="text-center text-muted-foreground">Nessun appuntamento per oggi</p>
+          ) : dayAppointments.length === 0 ? (
+            <p className="text-center text-muted-foreground">Nessun appuntamento per il giorno selezionato</p>
           ) : (
-            todaysAppointments.map((appointment) => (
+            dayAppointments.map((appointment) => (
               <div key={appointment.id} className="flex flex-col space-y-2 border-b pb-4 last:border-0">
                 <div className="flex justify-between items-center">
                   <div className="font-medium">{appointment.clientName}</div>

@@ -5,16 +5,20 @@ import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns"
+import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns"
 import { it } from "date-fns/locale"
 import { BookAppointmentDialog } from "@/components/book-appointment-dialog"
 import { useAuth } from "@/components/auth-context"
 import { getAppointments, getClientAppointments } from "@/lib/actions"
 import type { Appointment } from "@/lib/types"
 
-export function Calendar() {
+type CalendarProps = {
+  selectedDate: Date
+  onSelectDate: (date: Date) => void
+}
+
+export function Calendar({ selectedDate, onSelectDate }: CalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedTime, setSelectedTime] = useState<string | null>(null)
   const [isBookingDialogOpen, setIsBookingDialogOpen] = useState(false)
   const { user } = useAuth()
@@ -88,7 +92,7 @@ export function Calendar() {
 
   const handleTimeSlotClick = (date: Date, time: string) => {
     if (!isSlotBooked(date, time)) {
-      setSelectedDate(date)
+      onSelectDate(date)
       setSelectedTime(time)
       setIsBookingDialogOpen(true)
     }
@@ -115,7 +119,18 @@ export function Calendar() {
 
           <div className="grid grid-cols-7 gap-1 mb-2">
             {weekDays.map((day) => (
-              <div key={day.toString()} className="text-center">
+              <div
+                key={day.toString()}
+                className={cn(
+                  "text-center rounded-md py-1 cursor-pointer transition-colors",
+                  isSameDay(day, selectedDate)
+                    ? "bg-primary text-primary-foreground"
+                    : isSameDay(day, new Date())
+                      ? "bg-primary/10 text-primary"
+                      : "hover:bg-muted",
+                )}
+                onClick={() => onSelectDate(day)}
+              >
                 <div className="text-sm font-medium">{format(day, "EEE", { locale: it })}</div>
                 <div className="text-sm">{format(day, "d", { locale: it })}</div>
               </div>
@@ -132,10 +147,10 @@ export function Calendar() {
                       <button
                         key={`${day}-${time}`}
                         className={cn(
-                          "w-full text-xs py-1 rounded-sm",
+                          "w-full text-xs py-1 rounded-sm border transition-colors",
                           isBooked
-                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                            : "bg-primary/10 hover:bg-primary/20 cursor-pointer",
+                            ? "bg-destructive/15 border-destructive/40 text-destructive font-medium cursor-not-allowed"
+                            : "bg-primary/10 border-primary/20 hover:bg-primary/20 cursor-pointer",
                         )}
                         disabled={isBooked}
                         onClick={() => handleTimeSlotClick(day, time)}
@@ -151,7 +166,7 @@ export function Calendar() {
         </CardContent>
       </Card>
 
-      {selectedDate && selectedTime && (
+      {selectedTime && (
         <BookAppointmentDialog
           date={selectedDate}
           time={selectedTime}

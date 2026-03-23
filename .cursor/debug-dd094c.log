@@ -186,3 +186,15 @@
 {"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774293823430}
 {"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774293823821}
 {"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774293823990}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774294072850}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774294072851}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774294073257}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774294073553}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774294328658}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774294328658}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774294329177}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774294329394}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774294380254}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774294380256}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774294380506}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774294380773}
