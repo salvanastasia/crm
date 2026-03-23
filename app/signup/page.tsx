@@ -9,7 +9,7 @@ import { AuthCoverImage } from "@/components/auth-cover-image"
 function SignupPageContent() {
   return (
     <div className="grid min-h-svh md:grid-cols-2">
-      <AuthCoverImage />
+      <AuthCoverImage src="https://images.unsplash.com/photo-1575425187653-ce82c7d5ad20?q=80&w=987&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" />
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex justify-center gap-2 md:justify-start">
           <Link href="/" className="flex items-center gap-2 font-medium">
