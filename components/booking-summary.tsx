@@ -60,7 +60,7 @@ export function BookingSummary({
       case "paypal":
         return "PayPal"
       case "cash":
-        return "Contanti (al barbiere)"
+        return "Contanti (al dipendente)"
       default:
         return ""
     }
@@ -104,7 +104,7 @@ export function BookingSummary({
                   <User className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Barbiere</p>
+                  <p className="text-sm text-muted-foreground">Dipendente</p>
                   <p className="font-medium">{resource.name}</p>
                 </div>
               </div>

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { useAuth } from "@/components/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useSearchParams } from "next/navigation"
@@ -86,9 +86,6 @@ export default function LoginPage() {
             </Alert>
           )}
           <Tabs defaultValue="password" className="w-full">
-            <TabsList className="grid w-full grid-cols-1">
-              <TabsTrigger value="password">Password</TabsTrigger>
-            </TabsList>
             <TabsContent value="password" className="mt-4">
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
                 <div className="space-y-2">

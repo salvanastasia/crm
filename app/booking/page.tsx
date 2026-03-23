@@ -174,7 +174,7 @@ export default function BookingPage() {
           <CardHeader>
             <CardTitle>Salon non configurato</CardTitle>
             <CardDescription>
-              Non risulta nessuna attività collegata. Aggiungi un barbiere in Supabase o imposta{" "}
+              Non risulta nessuna attività collegata. Aggiungi un dipendente in Supabase o imposta{" "}
               <code className="text-xs">NEXT_PUBLIC_DEFAULT_BARBER_ID</code> nel file env.
             </CardDescription>
           </CardHeader>
@@ -223,7 +223,7 @@ export default function BookingPage() {
         <CardHeader>
           <Steps currentStep={currentStep} className="mb-4">
             <Step title="Servizio" />
-            <Step title="Barbiere" />
+            <Step title="Dipendente" />
             <Step title="Data e Ora" />
             <Step title="Pagamento" />
             <Step title="Conferma" />

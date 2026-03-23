@@ -11,7 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { updateResource } from "@/lib/actions"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Resource, Service } from "@/lib/types"
 
 interface EditResourceDialogProps {
@@ -36,6 +38,10 @@ export function EditResourceDialog({
   const [bio, setBio] = useState(resource.bio || "")
   const [isActive, setIsActive] = useState(resource.isActive)
   const [selectedServices, setSelectedServices] = useState<string[]>(resource.serviceIds || [])
+  const [imageUrl, setImageUrl] = useState(resource.imageUrl || "")
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(resource.imageUrl || null)
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -47,6 +53,9 @@ export function EditResourceDialog({
       setBio(resource.bio || "")
       setIsActive(resource.isActive)
       setSelectedServices(resource.serviceIds || [])
+      setImageUrl(resource.imageUrl || "")
+      setImagePreviewUrl(resource.imageUrl || null)
+      setImageUploadError(null)
     }
   }, [open, resource])
 
@@ -64,7 +73,7 @@ export function EditResourceDialog({
         bio,
         isActive,
         serviceIds: selectedServices,
-        imageUrl: resource.imageUrl,
+        imageUrl,
         barberId: resource.barberId,
       })
 
@@ -84,14 +93,74 @@ export function EditResourceDialog({
     )
   }
 
+  const getInitials = (fullName: string) =>
+    fullName
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "D"
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !resource.barberId) return
+
+    const localPreview = URL.createObjectURL(file)
+    setImagePreviewUrl(localPreview)
+    setImageUploadError(null)
+
+    void (async () => {
+      setIsUploadingImage(true)
+      try {
+        const supabase = getSupabaseBrowserClient()
+        if (!supabase) throw new Error("Supabase client unavailable")
+
+        const extFromName = file.name.split(".").pop()?.toLowerCase()
+        const ext = extFromName || (file.type.includes("png") ? "png" : file.type.includes("jpeg") ? "jpg" : "png")
+        const objectPath = `${resource.barberId}/resources/${resource.id}.${ext}`
+
+        const { error: uploadError } = await supabase.storage
+          .from("logos")
+          .upload(objectPath, file, { upsert: true, contentType: file.type || undefined })
+
+        if (uploadError) throw uploadError
+
+        const { data } = supabase.storage.from("logos").getPublicUrl(objectPath)
+        const publicUrl = data?.publicUrl
+        if (!publicUrl) throw new Error("Failed to generate public URL")
+
+        setImageUrl(publicUrl)
+        setImagePreviewUrl(publicUrl)
+      } catch (err) {
+        console.error("Error uploading resource image:", err)
+        setImageUploadError("Errore caricamento foto profilo. Riprova.")
+      } finally {
+        setIsUploadingImage(false)
+        URL.revokeObjectURL(localPreview)
+      }
+    })()
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Modifica Risorsa</DialogTitle>
+          <DialogTitle>Modifica Dipendente</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-profile-image">Foto profilo (opzionale)</Label>
+              <div className="flex items-center gap-4">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={imagePreviewUrl || imageUrl || ""} alt="Foto dipendente" />
+                  <AvatarFallback>{getInitials(name)}</AvatarFallback>
+                </Avatar>
+                <Input id="edit-profile-image" type="file" accept="image/*" onChange={handleImageChange} />
+              </div>
+              {imageUploadError ? <p className="text-xs text-destructive">{imageUploadError}</p> : null}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="edit-name">Nome e Cognome</Label>
@@ -104,8 +173,8 @@ export function EditResourceDialog({
                     <SelectValue placeholder="Seleziona un ruolo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Barbiere Senior">Barbiere Senior</SelectItem>
-                    <SelectItem value="Barbiere">Barbiere</SelectItem>
+                    <SelectItem value="Dipendente Senior">Dipendente Senior</SelectItem>
+                    <SelectItem value="Dipendente">Dipendente</SelectItem>
                     <SelectItem value="Apprendista">Apprendista</SelectItem>
                   </SelectContent>
                 </Select>
@@ -148,15 +217,15 @@ export function EditResourceDialog({
 
             <div className="flex items-center space-x-2">
               <Switch id="edit-active" checked={isActive} onCheckedChange={setIsActive} />
-              <Label htmlFor="edit-active">Risorsa attiva</Label>
+              <Label htmlFor="edit-active">Dipendente attivo</Label>
             </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Annulla
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Salvataggio..." : "Salva"}
+            <Button type="submit" disabled={isSubmitting || isUploadingImage}>
+              {isUploadingImage ? "Caricamento foto..." : isSubmitting ? "Salvataggio..." : "Salva"}
             </Button>
           </DialogFooter>
         </form>

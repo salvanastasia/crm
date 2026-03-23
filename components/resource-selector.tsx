@@ -28,6 +28,7 @@ export function ResourceSelector({
 }: ResourceSelectorProps) {
   const [resources, setResources] = useState<Resource[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const getRoleLabel = (role: string) => role.replace(/barbiere/gi, "Dipendente")
 
   useEffect(() => {
     const loadResources = async () => {
@@ -54,7 +55,7 @@ export function ResourceSelector({
     return (
       <div className="text-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p>Caricamento barbieri...</p>
+        <p>Caricamento dipendenti...</p>
       </div>
     )
   }
@@ -62,7 +63,7 @@ export function ResourceSelector({
   if (resources.length === 0) {
     return (
       <div className="text-center p-8">
-        <p className="mb-4">Nessun barbiere disponibile per questo servizio.</p>
+        <p className="mb-4">Nessun dipendente disponibile per questo servizio.</p>
         <Button onClick={onBack} variant="outline">
           Torna indietro
         </Button>
@@ -73,7 +74,7 @@ export function ResourceSelector({
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold">Seleziona un barbiere</h2>
+        <h2 className="text-xl font-semibold">Seleziona un dipendente</h2>
         <p className="text-sm text-muted-foreground mt-1">Scegli il professionista che preferisci</p>
       </div>
 
@@ -100,7 +101,7 @@ export function ResourceSelector({
               </Avatar>
               <div className="flex-1">
                 <h3 className="font-medium">{resource.name}</h3>
-                <p className="text-sm text-muted-foreground">{resource.role}</p>
+                <p className="text-sm text-muted-foreground">{getRoleLabel(resource.role)}</p>
               </div>
               {selectedResource?.id === resource.id && (
                 <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center">

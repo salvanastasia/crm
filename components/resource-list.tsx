@@ -111,13 +111,15 @@ export function ResourceList() {
       .join(", ")
   }
 
+  const getRoleLabel = (role: string) => role.replace(/barbiere/gi, "Dipendente")
+
   return (
     <>
       <div className="flex items-center mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Cerca risorsa..."
+            placeholder="Cerca dipendente..."
             className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -129,7 +131,7 @@ export function ResourceList() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Barbiere</TableHead>
+              <TableHead>Dipendente</TableHead>
               <TableHead>Ruolo</TableHead>
               <TableHead>Contatti</TableHead>
               <TableHead>Servizi</TableHead>
@@ -141,7 +143,7 @@ export function ResourceList() {
             {filteredResources.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                  {searchQuery ? "Nessuna risorsa trovata" : "Nessuna risorsa disponibile"}
+                  {searchQuery ? "Nessun dipendente trovato" : "Nessun dipendente disponibile"}
                 </TableCell>
               </TableRow>
             ) : (
@@ -158,7 +160,7 @@ export function ResourceList() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{resource.role}</TableCell>
+                  <TableCell>{getRoleLabel(resource.role)}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="text-sm">{resource.email}</span>
@@ -214,7 +216,7 @@ export function ResourceList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Questa azione non può essere annullata. La risorsa verrà eliminata permanentemente.
+              Questa azione non puo' essere annullata. Il dipendente verra' eliminato permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

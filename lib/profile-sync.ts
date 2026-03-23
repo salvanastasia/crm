@@ -128,6 +128,7 @@ export async function syncProfileFromAuthUser(
     id: profileData.id,
     email: profileData.email,
     name: profileData.name,
+    avatarUrl: (sessionUser.user_metadata?.avatar_url as string | undefined) ?? undefined,
     role,
     phone: profileData.phone || undefined,
     barberId,

@@ -11,10 +11,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
 
   const isClientBookingFlow = user?.role === "client" && pathname.startsWith("/booking")
+  const shouldShowHeader = pathname !== "/login"
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
+      {shouldShowHeader && <Header />}
       <main
         className={cn(
           "flex-1",

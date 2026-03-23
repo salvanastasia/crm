@@ -33,6 +33,7 @@ export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAp
   const [resources, setResources] = useState<Resource[]>([])
   const [availableResources, setAvailableResources] = useState<Resource[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const getRoleLabel = (role: string) => role.replace(/barbiere/gi, "Dipendente")
 
   useEffect(() => {
     if (!open || !barberId) return
@@ -140,7 +141,7 @@ export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAp
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="resource">Barbiere</Label>
+              <Label htmlFor="resource">Dipendente</Label>
               <Select
                 value={resourceId}
                 onValueChange={setResourceId}
@@ -153,15 +154,15 @@ export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAp
                       !serviceId
                         ? "Seleziona prima un servizio"
                         : availableResources.length === 0
-                          ? "Nessun barbiere disponibile per questo servizio"
-                          : "Seleziona un barbiere"
+                          ? "Nessun dipendente disponibile per questo servizio"
+                          : "Seleziona un dipendente"
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
                   {availableResources.map((resource) => (
                     <SelectItem key={resource.id} value={resource.id}>
-                      {resource.name} - {resource.role}
+                      {resource.name} - {getRoleLabel(resource.role)}
                     </SelectItem>
                   ))}
                 </SelectContent>

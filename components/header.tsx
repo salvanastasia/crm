@@ -24,7 +24,7 @@ const staffNavItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Clienti", href: "/clienti" },
   { name: "Servizi", href: "/servizi" },
-  { name: "Risorse", href: "/risorse" },
+  { name: "Dipendenti", href: "/risorse" },
   { name: "Calendario", href: "/calendario" },
 ]
 
@@ -87,7 +87,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="" />
+                      <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="" />
                       <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
                     </Avatar>
                   </Button>
@@ -167,7 +167,7 @@ export function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder.svg?height=32&width=32" alt="Avatar" />
+                      <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="Avatar" />
                       <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
                     </Avatar>
                   </Button>

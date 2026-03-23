@@ -89,6 +89,7 @@ export interface User {
   id: string
   email: string
   name: string
+  avatarUrl?: string
   role: "admin" | "staff" | "client"
   phone?: string
   barberId?: string

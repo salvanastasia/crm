@@ -35,7 +35,7 @@ export function PaymentSelector({
     {
       id: "cash",
       name: "Contanti",
-      description: "Paga al barbiere il giorno dell'appuntamento",
+      description: "Paga al dipendente il giorno dell'appuntamento",
       icon: <Banknote className="h-5 w-5" />,
     },
   ]
