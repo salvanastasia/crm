@@ -1,6 +1,10 @@
 import type React from "react"
-import { StaffRouteLayout } from "@/components/staff-route-layout"
+import { ProtectedRoute } from "@/components/protected-route"
 
 export default function ImpostazioniLayout({ children }: { children: React.ReactNode }) {
-  return <StaffRouteLayout>{children}</StaffRouteLayout>
+  return (
+    <ProtectedRoute allowedRoles={["admin", "staff", "client"]}>
+      {children}
+    </ProtectedRoute>
+  )
 }

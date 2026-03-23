@@ -112,6 +112,12 @@ export function Header() {
                       Le Tue Prenotazioni
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/impostazioni" className="flex items-center">
+                      <User className="mr-2 h-4 w-4" />
+                      Profilo
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -187,6 +193,9 @@ export function Header() {
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link href="/le-tue-prenotazioni">Le Tue Prenotazioni</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/impostazioni">Profilo</Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>

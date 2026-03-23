@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Pencil, Trash2, Search } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -113,6 +114,14 @@ export function ClientList() {
     setIsEditDialogOpen(false)
   }
 
+  const getClientInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "C"
+
   return (
     <>
       <div className="flex items-center mb-4">
@@ -148,7 +157,15 @@ export function ClientList() {
             ) : (
               filteredClients.map((client) => (
                 <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={client.imageUrl || ""} alt={client.name} />
+                        <AvatarFallback>{getClientInitials(client.name)}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-medium">{client.name}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>{client.email}</TableCell>
                   <TableCell>{client.phone}</TableCell>
                   <TableCell>{client.appointmentsCount || 0}</TableCell>

@@ -541,7 +541,7 @@ export async function bookAppointment(data: {
       barber_id: data.barberId,
       date: dateStr,
       time: data.time,
-      status: "confirmed",
+      status: "pending",
       payment_method: data.paymentMethod ?? "cash",
       payment_status: "pending",
     })
@@ -578,15 +578,38 @@ export async function getClients(barberId: string): Promise<Client[]> {
     counts.set(a.client_id, (counts.get(a.client_id) ?? 0) + 1)
   }
 
-  return profiles.map((p) => ({
-    id: p.id,
-    name: p.name,
-    email: p.email,
-    phone: p.phone ?? "",
-    notes: undefined,
-    barberId: p.barber_id,
-    appointmentsCount: counts.get(p.id) ?? 0,
-  }))
+  const resolveClientImageUrl = async (clientId: string) => {
+    const extensions = ["jpg", "jpeg", "png", "webp"]
+    for (const ext of extensions) {
+      const objectPath = `${barberId}/profiles/${clientId}.${ext}`
+      const { data } = supabase.storage.from("logos").getPublicUrl(objectPath)
+      const publicUrl = data?.publicUrl
+      if (!publicUrl) continue
+
+      try {
+        const response = await fetch(publicUrl, { method: "HEAD", cache: "no-store" })
+        if (response.ok) return publicUrl
+      } catch {
+        // ignore and try next extension
+      }
+    }
+    return undefined
+  }
+
+  const mapped = await Promise.all(
+    profiles.map(async (p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      phone: p.phone ?? "",
+      imageUrl: await resolveClientImageUrl(p.id),
+      notes: undefined,
+      barberId: p.barber_id,
+      appointmentsCount: counts.get(p.id) ?? 0,
+    })),
+  )
+
+  return mapped
 }
 
 export async function addClient(clientData: Omit<Client, "id" | "appointmentsCount">): Promise<Client | null> {
@@ -1218,7 +1241,10 @@ export async function updateAppointmentStatus(
 
   const { error } = await supabase
     .from("appointments")
-    .update({ status })
+    .update({
+      status,
+      payment_status: "pending",
+    })
     .eq("id", appointmentId)
     .eq("barber_id", barberId)
 
@@ -1248,6 +1274,7 @@ export async function updateAppointmentDetailsByAdmin(
       date: payload.date,
       time: payload.time,
       status: payload.status,
+      payment_status: payload.status === "completed" ? "paid" : "pending",
     })
     .eq("id", appointmentId)
     .eq("barber_id", barberId)

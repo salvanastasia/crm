@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay } from "date-fns"
 import { it } from "date-fns/locale"
@@ -102,6 +103,23 @@ export function Calendar({ selectedDate, onSelectDate }: CalendarProps) {
     setCurrentDate(addWeeks(currentDate, 1))
   }
 
+  const handleMonthChange = (monthValue: string) => {
+    const month = Number(monthValue)
+    setCurrentDate((prev) => new Date(prev.getFullYear(), month, 1))
+  }
+
+  const handleYearChange = (yearValue: string) => {
+    const year = Number(yearValue)
+    setCurrentDate((prev) => new Date(year, prev.getMonth(), 1))
+  }
+
+  const monthOptions = Array.from({ length: 12 }).map((_, idx) => ({
+    value: String(idx),
+    label: format(new Date(2026, idx, 1), "MMMM", { locale: it }),
+  }))
+  const currentYear = new Date().getFullYear()
+  const yearOptions = Array.from({ length: 7 }).map((_, idx) => String(currentYear - 3 + idx))
+
   const handleTimeSlotClick = (date: Date, time: string) => {
     if (!isSlotBooked(date, time)) {
       onSelectDate(date)
@@ -117,7 +135,32 @@ export function Calendar({ selectedDate, onSelectDate }: CalendarProps) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
               <CalendarIcon className="mr-2 h-5 w-5" />
-              <h2 className="text-lg font-semibold">{format(startDate, "MMMM yyyy", { locale: it })}</h2>
+              <div className="flex items-center gap-2">
+                <Select value={String(currentDate.getMonth())} onValueChange={handleMonthChange}>
+                  <SelectTrigger className="h-8 w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map((month) => (
+                      <SelectItem key={month.value} value={month.value}>
+                        {month.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={String(currentDate.getFullYear())} onValueChange={handleYearChange}>
+                  <SelectTrigger className="h-8 w-[96px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="flex gap-1">
               <Button variant="outline" size="icon" onClick={handlePreviousWeek}>

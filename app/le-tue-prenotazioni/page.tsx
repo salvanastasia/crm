@@ -17,6 +17,7 @@ export default function LeTuePrenotazioniPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loadingAppointments, setLoadingAppointments] = useState(false)
+  const [showBookedNotice, setShowBookedNotice] = useState(false)
 
   useEffect(() => {
     if (isLoading) return
@@ -49,7 +50,9 @@ export default function LeTuePrenotazioniPage() {
       title: "Prenotazione completata",
       description: "La tua prenotazione e' stata inviata con successo.",
     })
-  }, [searchParams])
+    setShowBookedNotice(true)
+    router.replace("/le-tue-prenotazioni")
+  }, [searchParams, router])
 
   const sortedAppointments = useMemo(() => {
     return [...appointments].sort((a, b) => {
@@ -83,6 +86,12 @@ export default function LeTuePrenotazioniPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Le Tue Prenotazioni</h1>
+
+      {showBookedNotice && (
+        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Prenotazione inserita con successo.
+        </div>
+      )}
 
       <Card>
         <CardHeader>

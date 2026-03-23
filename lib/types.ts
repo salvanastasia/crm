@@ -14,6 +14,7 @@ export interface Client {
   name: string
   email: string
   phone: string
+  imageUrl?: string
   notes?: string
   barberId?: string
   appointmentsCount?: number
