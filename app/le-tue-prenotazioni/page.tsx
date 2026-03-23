@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { format, parseISO } from "date-fns"
 import { it } from "date-fns/locale"
@@ -12,7 +12,7 @@ import type { Appointment } from "@/lib/types"
 import { toast } from "@/components/ui/use-toast"
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 
-export default function LeTuePrenotazioniPage() {
+function LeTuePrenotazioniContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -148,6 +148,21 @@ export default function LeTuePrenotazioniPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function LeTuePrenotazioniPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">Le Tue Prenotazioni</h1>
+          <p className="text-muted-foreground">Caricamento...</p>
+        </div>
+      }
+    >
+      <LeTuePrenotazioniContent />
+    </Suspense>
   )
 }
 
