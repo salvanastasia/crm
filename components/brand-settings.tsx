@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useAuth } from "@/components/auth-context"
 import { getBrandSettings, updateBrandSettings } from "@/lib/actions"
 import type { BrandSettings as BrandSettingsType } from "@/lib/types"
+import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 
 export function BrandSettings() {
   const { user } = useAuth()
@@ -23,6 +24,9 @@ export function BrandSettings() {
     barberId: "",
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null)
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null)
   const [isSaved, setIsSaved] = useState(false)
 
   useEffect(() => {
@@ -39,11 +43,11 @@ export function BrandSettings() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!barberId || isUploadingLogo) return
     setIsSubmitting(true)
     setIsSaved(false)
 
     try {
-      if (!barberId) return
       await updateBrandSettings({ ...settings, barberId })
       setIsSaved(true)
 
@@ -106,15 +110,68 @@ export function BrandSettings() {
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // In a real app, you would upload this file to a storage service
-      // For this demo, we'll create a local URL
-      const url = URL.createObjectURL(file)
-      setSettings({
-        ...settings,
-        logoUrl: url,
-      })
+      if (logoPreviewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(logoPreviewUrl)
+      }
+      const previewUrl = URL.createObjectURL(file)
+      const previousLogoUrl = settings.logoUrl
+      setLogoUploadError(null)
+      // Keep a local preview independent from the persisted `settings.logoUrl`
+      // (so we don't accidentally save an ephemeral `blob:` URL).
+      setLogoPreviewUrl(previewUrl)
+
+      void (async () => {
+        if (!barberId) return
+        setIsUploadingLogo(true)
+        try {
+          const supabase = getSupabaseBrowserClient()
+          if (!supabase) throw new Error("Supabase client unavailable")
+
+          const extFromName = file.name.split(".").pop()?.toLowerCase()
+          const ext = extFromName || (file.type.includes("png") ? "png" : file.type.includes("jpeg") ? "jpg" : "png")
+          const objectPath = `${barberId}/logo.${ext}`
+
+          const { error: uploadError } = await supabase.storage
+            .from("logos")
+            .upload(objectPath, file, { upsert: true, contentType: file.type || undefined })
+
+          if (uploadError) throw uploadError
+
+          const { data } = supabase.storage.from("logos").getPublicUrl(objectPath)
+          const publicUrl = data?.publicUrl
+          if (!publicUrl) throw new Error("Failed to generate public URL")
+
+          setSettings((prev) => ({ ...prev, logoUrl: publicUrl }))
+          setLogoPreviewUrl(publicUrl)
+
+          URL.revokeObjectURL(previewUrl)
+        } catch (err) {
+          console.error("handleLogoChange(upload):", err)
+
+          // If the bucket doesn't exist, the upload can't succeed yet.
+          // Keep the local preview visible, but don't overwrite the persisted logo.
+          const message = err instanceof Error ? err.message : String(err)
+          if (message.toLowerCase().includes("bucket not found")) {
+            setLogoUploadError(
+              "Impossibile caricare il logo: bucket `logos` non trovato. Applica la migrazione Supabase per creare il bucket e riprova.",
+            )
+            setSettings((prev) => ({ ...prev, logoUrl: previousLogoUrl }))
+            // Don't revoke `previewUrl` so the preview doesn't disappear.
+            setLogoPreviewUrl(previewUrl)
+          } else {
+            setLogoUploadError("Errore caricamento logo. Riprova.")
+            setSettings((prev) => ({ ...prev, logoUrl: previousLogoUrl }))
+            setLogoPreviewUrl(previousLogoUrl || null)
+            URL.revokeObjectURL(previewUrl)
+          }
+        } finally {
+          setIsUploadingLogo(false)
+        }
+      })()
     }
   }
+
+  const effectiveLogoUrl = logoPreviewUrl || settings.logoUrl
 
   return (
     <Card>
@@ -164,10 +221,10 @@ export function BrandSettings() {
           <div className="space-y-2">
             <Label htmlFor="logo">Logo</Label>
             <div className="flex items-center gap-4">
-              {settings.logoUrl && (
+              {effectiveLogoUrl && (
                 <div className="w-16 h-16 rounded-md border flex items-center justify-center overflow-hidden">
                   <img
-                    src={settings.logoUrl || "/placeholder.svg"}
+                    src={effectiveLogoUrl || "/placeholder.svg"}
                     alt="Logo"
                     className="max-w-full max-h-full object-contain"
                   />
@@ -175,10 +232,11 @@ export function BrandSettings() {
               )}
               <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} />
             </div>
+            {logoUploadError ? <p className="text-xs text-destructive">{logoUploadError}</p> : null}
           </div>
 
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Salvataggio..." : isSaved ? "Salvato!" : "Salva Impostazioni"}
+          <Button type="submit" disabled={isSubmitting || isUploadingLogo}>
+            {isUploadingLogo ? "Caricamento logo..." : isSubmitting ? "Salvataggio..." : isSaved ? "Salvato!" : "Salva Impostazioni"}
           </Button>
         </form>
       </CardContent>

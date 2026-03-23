@@ -260,11 +260,15 @@ export async function getBrandSettings(barberId: string): Promise<BrandSettings 
       barberId,
     }
   }
+
+  const rawLogoUrl = data.logo_url ?? ""
+  // If the project previously saved `blob:` URLs (ephemeral), treat them as empty so the UI falls back.
+  const logoUrl = typeof rawLogoUrl === "string" && rawLogoUrl.startsWith("blob:") ? "" : rawLogoUrl
   return {
     id: data.id,
     businessName: data.business_name,
     brandColor: data.brand_color ?? "#4f46e5",
-    logoUrl: data.logo_url ?? "",
+    logoUrl,
     barberId: data.barber_id,
   }
 }

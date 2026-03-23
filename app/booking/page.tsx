@@ -22,6 +22,7 @@ export default function BookingPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
   const [brandSettings, setBrandSettings] = useState<BrandSettings | null>(null)
+  const [isLogoBroken, setIsLogoBroken] = useState(false)
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<Service | null>(null)
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null)
@@ -76,6 +77,11 @@ export default function BookingPage() {
       cancelled = true
     }
   }, [isAuthenticated, user?.id, user?.role, user?.barberId, refreshProfile])
+
+  useEffect(() => {
+    // If the logo url changes (new upload), re-attempt rendering.
+    setIsLogoBroken(false)
+  }, [brandSettings?.logoUrl])
 
   useEffect(() => {
     // Reimposta la risorsa selezionata quando cambia il servizio
@@ -192,11 +198,12 @@ export default function BookingPage() {
     <div className="w-full py-2 md:py-4">
       <div className="mb-8 text-center">
         <div className="flex justify-center mb-4">
-          {brandSettings?.logoUrl ? (
+          {brandSettings?.logoUrl && !isLogoBroken ? (
             <img
               src={brandSettings.logoUrl || "/placeholder.svg"}
               alt={brandSettings.businessName}
               className="h-16 w-16 object-contain"
+              onError={() => setIsLogoBroken(true)}
             />
           ) : (
             <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">

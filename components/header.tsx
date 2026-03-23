@@ -75,7 +75,7 @@ export function Header() {
           <div className="flex h-14 items-center justify-between">
             <Link href="/booking" className="flex items-center gap-2 min-w-0">
               <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={settings?.logoUrl || ""} alt="" />
+                <AvatarImage src={settings?.logoUrl || "/placeholder.svg?height=32&width=32"} alt="" />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>
@@ -128,7 +128,7 @@ export function Header() {
           <div className="flex items-center gap-8">
             <Link href={isStaff ? "/" : isClient ? "/booking" : "/"} className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={settings?.logoUrl || ""} alt="Logo" />
+                <AvatarImage src={settings?.logoUrl || "/placeholder.svg?height=32&width=32"} alt="Logo" />
                 <AvatarFallback>
                   <User className="h-4 w-4" />
                 </AvatarFallback>
