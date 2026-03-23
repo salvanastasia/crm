@@ -1365,7 +1365,18 @@ export async function getRecentAppointmentsForDashboard(
 ) {
   const supabase = await db()
   if (!supabase || !barberId || !startDateKey || !endDateKey) {
-    return { appointmentsCount: 0, recent: [] as Array<{ id: string; clientName: string; clientEmail: string; initials: string; amount: number }> }
+    return {
+      appointmentsCount: 0,
+      recent: [] as Array<{
+        id: string
+        clientName: string
+        clientEmail: string
+        initials: string
+        amount: number
+        date: string
+        time: string
+      }>,
+    }
   }
 
   const { data: appts, error } = await supabase
@@ -1431,6 +1442,8 @@ export async function getRecentAppointmentsForDashboard(
       clientEmail: client.email ?? "",
       initials: getInitials(client.name),
       amount,
+      date: a.date,
+      time: a.time,
     }
   })
 

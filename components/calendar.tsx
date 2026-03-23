@@ -55,9 +55,21 @@ export function Calendar({ selectedDate, onSelectDate }: CalendarProps) {
     return format(d, "yyyy-MM-dd")
   }
 
+  const normalizeTimeKey = (time: string) => {
+    // Supabase `time` can arrive as "HH:mm:ss"; slots are "HH:mm".
+    return String(time).slice(0, 5)
+  }
+
   const isSlotBooked = (date: Date, time: string) => {
     const key = dateKey(date)
-    return appointments.some((a) => a.date && dateKey(a.date) === key && a.time === time && a.status !== "cancelled")
+    const slotTime = normalizeTimeKey(time)
+    return appointments.some(
+      (a) =>
+        a.date &&
+        dateKey(a.date) === key &&
+        normalizeTimeKey(a.time) === slotTime &&
+        a.status !== "cancelled",
+    )
   }
 
   useEffect(() => {

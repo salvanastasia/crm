@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,12 +22,29 @@ export default function LoginPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const messageFromQuery = searchParams.get("message")
-  const { loginWithPassword } = useAuth()
+  const { loginWithPassword, isAuthenticated, isLoading: authLoading, user } = useAuth()
+  const router = useRouter()
 
   // Mostra il messaggio di ritorno (es. dopo update password).
   useEffect(() => {
     if (messageFromQuery) setSuccess(messageFromQuery)
   }, [messageFromQuery])
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !user) return
+
+    if (user.role === "client") {
+      router.replace("/booking")
+      return
+    }
+
+    if (user.role === "admin" && !user.barberId) {
+      router.replace("/onboarding")
+      return
+    }
+
+    router.replace("/dashboard")
+  }, [authLoading, isAuthenticated, router, user])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
