@@ -11,7 +11,7 @@ import { useMobile } from "@/hooks/use-mobile"
 const navItems = [
   {
     name: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
   },
   {

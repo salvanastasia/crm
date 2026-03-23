@@ -34,7 +34,7 @@ export default function StaffPage() {
       if (!isAuthenticated) {
         router.push("/login")
       } else if (user?.role !== "admin") {
-        router.push("/")
+        router.push("/dashboard")
       } else {
         loadStaffMembers()
       }

@@ -23,7 +23,7 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         if (user.role === "client") {
           router.push("/booking")
         } else {
-          router.push("/")
+          router.push("/dashboard")
         }
       }
     }

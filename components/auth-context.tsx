@@ -193,9 +193,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else if (user.role === "admin" && !user.barberId) {
             target = "/onboarding"
           } else {
-            target = "/"
+            target = "/dashboard"
           }
-          if (pathname !== target) router.push(target)
+          if (currentPath !== target) {
+            router.replace(target)
+            router.refresh()
+          }
         }
       } else if (event === "SIGNED_OUT") {
         setAuthState({
@@ -205,7 +208,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           error: null,
         })
         const currentPath = pathnameRef.current ?? (typeof window !== "undefined" ? window.location.pathname : "")
-        if (currentPath !== "/login") router.push("/login")
+        if (currentPath !== "/login") {
+          router.replace("/login")
+          router.refresh()
+        }
       }
     })
 
@@ -330,7 +336,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: null,
       })
 
-      router.push("/login")
+      router.replace("/login")
+      router.refresh()
     } catch (error) {
       console.error("Errore durante il logout:", error)
     } finally {

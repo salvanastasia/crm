@@ -22,7 +22,7 @@ import { useAuth } from "@/components/auth-context"
 import type { BrandSettings } from "@/lib/types"
 
 const staffNavItems = [
-  { name: "Dashboard", href: "/" },
+  { name: "Dashboard", href: "/dashboard" },
   { name: "Clienti", href: "/clienti" },
   { name: "Servizi", href: "/servizi" },
   { name: "Risorse", href: "/risorse" },
@@ -126,7 +126,7 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href={isStaff ? "/" : isClient ? "/booking" : "/"} className="flex items-center gap-2">
+            <Link href={isStaff ? "/dashboard" : isClient ? "/booking" : "/"} className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={settings?.logoUrl || "/placeholder.svg?height=32&width=32"} alt="Logo" />
                 <AvatarFallback>

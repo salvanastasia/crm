@@ -22,7 +22,7 @@ export default function FindBarberPage() {
       return
     }
     if (user?.role !== "client") {
-      router.replace("/")
+      router.replace("/dashboard")
       return
     }
 
