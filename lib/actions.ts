@@ -1397,6 +1397,7 @@ export async function getRecentAppointmentsForDashboard(
         amount: number
         date: string
         time: string
+        status: "pending" | "confirmed" | "completed" | "cancelled"
       }>,
     }
   }
@@ -1417,10 +1418,9 @@ export async function getRecentAppointmentsForDashboard(
   }
 
   const appointmentsCount = appts.length
-  const paidAppts = (appts ?? []).filter((a) => a.payment_status === "paid" && !!a.service_id)
-  const recentPaid = paidAppts.slice(0, limit)
+  const recentAppts = (appts ?? []).slice(0, limit)
 
-  const serviceIds = [...new Set(recentPaid.map((a) => a.service_id).filter(Boolean))] as string[]
+  const serviceIds = [...new Set(recentAppts.map((a) => a.service_id).filter(Boolean))] as string[]
   const { data: services, error: servicesError } = serviceIds.length
     ? await supabase.from("services").select("id, price").eq("barber_id", barberId).in("id", serviceIds)
     : { data: [], error: null }
@@ -1431,7 +1431,7 @@ export async function getRecentAppointmentsForDashboard(
 
   const priceMap = new Map((services ?? []).map((s) => [s.id, Number(s.price)]))
 
-  const clientIds = [...new Set(recentPaid.map((a) => a.client_id).filter(Boolean))] as string[]
+  const clientIds = [...new Set(recentAppts.map((a) => a.client_id).filter(Boolean))] as string[]
   const { data: clients, error: clientsError } = clientIds.length
     ? await supabase
         .from("profiles")
@@ -1455,7 +1455,7 @@ export async function getRecentAppointmentsForDashboard(
     return `${first}${second}`.toUpperCase()
   }
 
-  const recent = recentPaid.map((a) => {
+  const recent = recentAppts.map((a) => {
     const client = clientMap.get(a.client_id) ?? { name: "Cliente", email: "" }
     const amount = a.service_id ? priceMap.get(a.service_id) ?? 0 : 0
     return {
@@ -1466,6 +1466,7 @@ export async function getRecentAppointmentsForDashboard(
       amount,
       date: a.date,
       time: a.time,
+      status: a.status as "pending" | "confirmed" | "completed" | "cancelled",
     }
   })
 

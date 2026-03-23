@@ -226,3 +226,24 @@
 {"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774295698271}
 {"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774295698501}
 {"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774295698894}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296124340}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296124342}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296124842}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296125141}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296260220}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296260223}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296260983}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296261204}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296514235}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296514237}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296514764}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296514961}
+{"sessionId":"dd094c","runId":"post-fix-auth-callback","hypothesisId":"M","location":"lib/profile-sync.ts:syncProfileFromAuthUser","message":"syncProfileFromAuthUser:final:select:error","data":{"errorMessage":"Cannot coerce the result to a single JSON object"},"timestamp":1774296564591}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296572459}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296572461}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296572994}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296573560}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296604539}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:start","data":{"hasBarberId":true},"timestamp":1774296604541}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296604981}
+{"sessionId":"dd094c","runId":"pre-fix-client","hypothesisId":"B","location":"components/client-list.tsx","message":"loadClients:done","data":{"count":1},"timestamp":1774296605288}

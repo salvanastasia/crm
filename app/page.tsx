@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { format } from "date-fns"
+import { format, startOfWeek, endOfWeek } from "date-fns"
 import { CalendarIcon, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,6 +22,10 @@ export default function Dashboard() {
   const endDateKey = format(rangeEnd, "yyyy-MM-dd")
   const startLabel = format(rangeStart, "d MMM, yyyy")
   const endLabel = format(rangeEnd, "d MMM, yyyy")
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 })
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 })
+  const weekStartKey = format(weekStart, "yyyy-MM-dd")
+  const weekEndKey = format(weekEnd, "yyyy-MM-dd")
 
   // Aggiungi reindirizzamento basato sul ruolo utente all'inizio della funzione Dashboard
   useEffect(() => {
@@ -82,8 +86,8 @@ export default function Dashboard() {
 
         <Card className="overflow-hidden">
           <CardContent className="p-6">
-            <h3 className="text-lg font-medium mb-4">Appuntamenti Recenti</h3>
-            <RecentAppointments startDateKey={startDateKey} endDateKey={endDateKey} />
+            <h3 className="text-lg font-medium mb-4">Questa settimana</h3>
+            <RecentAppointments startDateKey={weekStartKey} endDateKey={weekEndKey} />
           </CardContent>
         </Card>
       </div>
