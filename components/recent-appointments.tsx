@@ -146,6 +146,9 @@ export function RecentAppointments({ startDateKey, endDateKey }: { startDateKey:
     if (status === "confirmed") {
       return "bg-emerald-100 text-emerald-900 border-emerald-200"
     }
+    if (status === "completed") {
+      return "bg-sky-100 text-sky-900 border-sky-200"
+    }
     if (status === "cancelled") {
       return "bg-rose-200 text-rose-800 border-rose-300"
     }
