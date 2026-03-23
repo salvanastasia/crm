@@ -253,6 +253,8 @@ export default function BookingPage() {
           {currentStep === 2 && user.barberId && (
             <DateTimeSelector
               barberId={user.barberId}
+              resourceId={selectedResource?.id || ""}
+              serviceDuration={selectedService?.duration ?? 30}
               selectedDate={selectedDate}
               selectedTime={selectedTime}
               onSelectDate={setSelectedDate}

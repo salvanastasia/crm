@@ -13,6 +13,13 @@ import type {
   Client,
   Appointment,
 } from "./types"
+import {
+  appointmentCalendarDateKey,
+  slotOverlapsAnyBusy,
+  timeStringToMinutes,
+  toBusyIntervals,
+  type BookedIntervalRow,
+} from "@/lib/appointment-availability"
 
 async function db() {
   return createSupabaseServerClient()
@@ -434,6 +441,55 @@ export async function getNotificationSettings(barberId: string): Promise<Notific
   }
 }
 
+async function fetchBookedIntervalsFromRpc(
+  supabase: NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>,
+  params: {
+    barberId: string
+    resourceId: string
+    dateKey: string
+    excludeAppointmentId?: string | null
+  },
+): Promise<BookedIntervalRow[]> {
+  const { data, error } = await supabase.rpc("get_booked_intervals_for_resource", {
+    p_barber_id: params.barberId,
+    p_resource_id: params.resourceId,
+    p_date: params.dateKey,
+    p_exclude_appointment_id: params.excludeAppointmentId ?? null,
+  })
+
+  if (error) {
+    console.error("get_booked_intervals_for_resource:", error)
+    return []
+  }
+
+  const rows = (data ?? []) as { start_time: string; duration_minutes: number }[]
+  return rows.map((r) => ({
+    startTime: String(r.start_time ?? "").slice(0, 5),
+    durationMinutes: Math.max(5, Number(r.duration_minutes) || 30),
+  }))
+}
+
+/** Intervalli occupati per risorsa/giorno (RPC SECURITY DEFINER; richiede migration). */
+export async function getBookedIntervalsForResource(params: {
+  barberId: string
+  resourceId: string
+  date: Date | string
+  excludeAppointmentId?: string | null
+}): Promise<BookedIntervalRow[]> {
+  const supabase = await db()
+  if (!supabase || !params.barberId || !params.resourceId || !params.date) return []
+
+  const dateKey = appointmentCalendarDateKey(params.date)
+  if (!dateKey) return []
+
+  return fetchBookedIntervalsFromRpc(supabase, {
+    barberId: params.barberId,
+    resourceId: params.resourceId,
+    dateKey,
+    excludeAppointmentId: params.excludeAppointmentId,
+  })
+}
+
 export async function updateNotificationSettings(settings: NotificationSettings): Promise<NotificationSettings | null> {
   const supabase = await db()
   if (!supabase || !settings.barberId) return null
@@ -512,7 +568,9 @@ export async function bookAppointment(data: {
   const supabase = await db()
   if (!supabase) return { success: false, message: "Database non configurato" }
 
-  const dateStr = typeof data.date === "string" ? data.date : data.date.toISOString().split("T")[0]
+  const dateStr = appointmentCalendarDateKey(data.date)
+  if (!dateStr) return { success: false, message: "Data non valida" }
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -532,6 +590,33 @@ export async function bookAppointment(data: {
 
   const clientId = user.id
 
+  const { data: svcRow, error: svcErr } = await supabase
+    .from("services")
+    .select("duration")
+    .eq("id", data.serviceId)
+    .eq("barber_id", data.barberId)
+    .maybeSingle()
+
+  if (svcErr || !svcRow) {
+    return { success: false, message: "Servizio non trovato o non disponibile" }
+  }
+
+  const newDurationMin = Math.max(5, Number(svcRow.duration) || 30)
+  const bookedRows = await fetchBookedIntervalsFromRpc(supabase, {
+    barberId: data.barberId,
+    resourceId: data.resourceId,
+    dateKey: dateStr,
+    excludeAppointmentId: null,
+  })
+  const busy = toBusyIntervals(bookedRows)
+  const proposedStart = timeStringToMinutes(data.time)
+  if (slotOverlapsAnyBusy(proposedStart, newDurationMin, busy)) {
+    return {
+      success: false,
+      message: "Questo orario non e' disponibile per il dipendente scelto. Scegli un altro slot.",
+    }
+  }
+
   const { data: appt, error: apptErr } = await supabase
     .from("appointments")
     .insert({
@@ -549,6 +634,9 @@ export async function bookAppointment(data: {
     .single()
 
   if (apptErr || !appt) {
+    if ((apptErr as { code?: string } | null)?.code === "23505") {
+      return { success: false, message: "Questo orario non e' piu' disponibile. Scegli un altro slot." }
+    }
     return { success: false, message: apptErr?.message ?? "Errore creazione appuntamento" }
   }
   return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
@@ -1264,14 +1352,57 @@ export async function updateAppointmentDetailsByAdmin(
     time: string
     status: "pending" | "confirmed" | "completed" | "cancelled"
   },
-): Promise<boolean> {
+): Promise<{ ok: boolean; message?: string }> {
   const supabase = await db()
-  if (!supabase || !appointmentId || !barberId) return false
+  if (!supabase || !appointmentId || !barberId) return { ok: false, message: "Richiesta non valida" }
+
+  const dateKey = appointmentCalendarDateKey(payload.date)
+  if (!dateKey) return { ok: false, message: "Data non valida" }
+
+  const { data: row, error: rowErr } = await supabase
+    .from("appointments")
+    .select("id, service_id, resource_id")
+    .eq("id", appointmentId)
+    .eq("barber_id", barberId)
+    .maybeSingle()
+
+  if (rowErr || !row) {
+    console.error("updateAppointmentDetailsByAdmin(load):", rowErr)
+    return { ok: false, message: "Appuntamento non trovato" }
+  }
+
+  if (payload.status !== "cancelled") {
+    const { data: svcRow } = await supabase
+      .from("services")
+      .select("duration")
+      .eq("id", row.service_id ?? "")
+      .eq("barber_id", barberId)
+      .maybeSingle()
+
+    const durationMin = Math.max(5, Number(svcRow?.duration) || 30)
+    const resourceId = row.resource_id as string
+    if (!resourceId) return { ok: false, message: "Risorsa non valida" }
+
+    const bookedRows = await fetchBookedIntervalsFromRpc(supabase, {
+      barberId,
+      resourceId,
+      dateKey,
+      excludeAppointmentId: appointmentId,
+    })
+    const busy = toBusyIntervals(bookedRows)
+    const proposedStart = timeStringToMinutes(payload.time)
+    if (slotOverlapsAnyBusy(proposedStart, durationMin, busy)) {
+      return {
+        ok: false,
+        message: "Orario non disponibile: si sovrappone ad un altro appuntamento per questa risorsa.",
+      }
+    }
+  }
 
   const { error } = await supabase
     .from("appointments")
     .update({
-      date: payload.date,
+      date: dateKey,
       time: payload.time,
       status: payload.status,
       payment_status: payload.status === "completed" ? "paid" : "pending",
@@ -1281,10 +1412,13 @@ export async function updateAppointmentDetailsByAdmin(
 
   if (error) {
     console.error("updateAppointmentDetailsByAdmin:", error)
-    return false
+    if ((error as { code?: string }).code === "23505") {
+      return { ok: false, message: "Slot gia' occupato. Scegli un altro orario." }
+    }
+    return { ok: false, message: error.message ?? "Aggiornamento non riuscito" }
   }
 
-  return true
+  return { ok: true }
 }
 
 export async function getDashboardStats(

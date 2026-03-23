@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Appointment } from "@/lib/types"
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
+import { toast } from "@/components/ui/use-toast"
 
 type AppointmentsListProps = {
   selectedDate?: Date
@@ -118,12 +119,19 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
     if (!user?.barberId || !editingId || !editDate || !editTime) return
     setUpdatingId(editingId)
     try {
-      const ok = await updateAppointmentDetailsByAdmin(editingId, user.barberId, {
+      const res = await updateAppointmentDetailsByAdmin(editingId, user.barberId, {
         date: editDate,
         time: editTime,
         status: editStatus,
       })
-      if (!ok) return
+      if (!res.ok) {
+        toast({
+          title: "Impossibile salvare",
+          description: res.message ?? "Riprova piu' tardi.",
+          variant: "destructive",
+        })
+        return
+      }
 
       setAppointments((prev) =>
         prev.map((a) =>

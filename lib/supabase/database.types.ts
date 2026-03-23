@@ -346,7 +346,15 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_booked_intervals_for_resource: {
+        Args: {
+          p_barber_id: string
+          p_resource_id: string
+          p_date: string
+          p_exclude_appointment_id?: string | null
+        }
+        Returns: { start_time: string; duration_minutes: number }[]
+      }
     }
     Enums: {
       [_ in never]: never

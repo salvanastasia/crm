@@ -7,11 +7,15 @@ import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { getBusinessHours } from "@/lib/actions"
+import { getBookedIntervalsForResource, getBusinessHours } from "@/lib/actions"
+import type { BookedIntervalRow } from "@/lib/appointment-availability"
 import type { BusinessHours } from "@/lib/types"
+import { slotOverlapsAnyBusy, timeStringToMinutes, toBusyIntervals } from "@/lib/appointment-availability"
 
 interface DateTimeSelectorProps {
   barberId: string
+  resourceId: string
+  serviceDuration: number
   selectedDate: Date | null
   selectedTime: string | null
   onSelectDate: (date: Date) => void
@@ -22,6 +26,8 @@ interface DateTimeSelectorProps {
 
 export function DateTimeSelector({
   barberId,
+  resourceId,
+  serviceDuration,
   selectedDate,
   selectedTime,
   onSelectDate,
@@ -31,6 +37,7 @@ export function DateTimeSelector({
 }: DateTimeSelectorProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null)
+  const [bookedIntervals, setBookedIntervals] = useState<BookedIntervalRow[]>([])
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -55,23 +62,57 @@ export function DateTimeSelector({
   }, [barberId])
 
   useEffect(() => {
+    if (!selectedDate || !barberId || !resourceId) {
+      setBookedIntervals([])
+      return
+    }
+
+    const loadBooked = async () => {
+      const dateKey = format(selectedDate, "yyyy-MM-dd")
+      const rows = await getBookedIntervalsForResource({
+        barberId,
+        resourceId,
+        date: dateKey,
+      })
+      setBookedIntervals(rows)
+    }
+
+    void loadBooked()
+  }, [selectedDate, barberId, resourceId])
+
+  useEffect(() => {
     if (selectedDate && businessHours) {
       // Determina il giorno della settimana
       const dayOfWeek = format(selectedDate, "EEEE", { locale: it }).toLowerCase()
       const dayKey = getDayKey(dayOfWeek)
 
       if (dayKey && businessHours[dayKey]?.isOpen) {
-        // Genera gli slot di tempo disponibili
         const { open, close } = businessHours[dayKey]
-        const slots = generateTimeSlots(open, close)
-        setAvailableTimeSlots(slots)
+        const slots = generateTimeSlots(open, close, serviceDuration)
+        const closeMin = timeStringToMinutes(close)
+        const busy = toBusyIntervals(bookedIntervals)
+        const dur = Math.max(5, Number(serviceDuration) || 30)
+
+        setAvailableTimeSlots(
+          slots.filter((slot) => {
+            const startMin = timeStringToMinutes(slot)
+            if (startMin + dur > closeMin) return false
+            return !slotOverlapsAnyBusy(startMin, dur, busy)
+          }),
+        )
       } else {
         setAvailableTimeSlots([])
       }
     } else {
       setAvailableTimeSlots([])
     }
-  }, [selectedDate, businessHours])
+  }, [selectedDate, businessHours, bookedIntervals, serviceDuration])
+
+  useEffect(() => {
+    if (!selectedTime) return
+    if (availableTimeSlots.includes(selectedTime)) return
+    onSelectTime("")
+  }, [availableTimeSlots, selectedTime, onSelectTime])
 
   const getDayKey = (italianDay: string): keyof BusinessHours | null => {
     const dayMap: Record<string, keyof BusinessHours> = {
@@ -86,18 +127,19 @@ export function DateTimeSelector({
     return dayMap[italianDay] || null
   }
 
-  const generateTimeSlots = (open: string, close: string): string[] => {
+  const generateTimeSlots = (open: string, close: string, slotMinutes: number): string[] => {
     const slots: string[] = []
     const [openHour, openMinute] = open.split(":").map(Number)
     const [closeHour, closeMinute] = close.split(":").map(Number)
 
     let currentHour = openHour
     let currentMinute = openMinute
+    const safeSlotMinutes = Math.max(5, Number(slotMinutes) || 30)
 
     while (currentHour < closeHour || (currentHour === closeHour && currentMinute < closeMinute)) {
       slots.push(`${currentHour.toString().padStart(2, "0")}:${currentMinute.toString().padStart(2, "0")}`)
 
-      currentMinute += 30
+      currentMinute += safeSlotMinutes
       if (currentMinute >= 60) {
         currentHour += 1
         currentMinute = 0
