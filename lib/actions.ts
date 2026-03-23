@@ -1230,6 +1230,36 @@ export async function updateAppointmentStatus(
   return true
 }
 
+export async function updateAppointmentDetailsByAdmin(
+  appointmentId: string,
+  barberId: string,
+  payload: {
+    date: string
+    time: string
+    status: "pending" | "confirmed" | "completed" | "cancelled"
+  },
+): Promise<boolean> {
+  const supabase = await db()
+  if (!supabase || !appointmentId || !barberId) return false
+
+  const { error } = await supabase
+    .from("appointments")
+    .update({
+      date: payload.date,
+      time: payload.time,
+      status: payload.status,
+    })
+    .eq("id", appointmentId)
+    .eq("barber_id", barberId)
+
+  if (error) {
+    console.error("updateAppointmentDetailsByAdmin:", error)
+    return false
+  }
+
+  return true
+}
+
 export async function getDashboardStats(
   barberId: string,
   startDateKey: string,
