@@ -127,8 +127,12 @@ export function RecentAppointments({ startDateKey, endDateKey }: { startDateKey:
               <p className="text-xs text-muted-foreground mt-1">{normalizeTime(appointment.time)}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="text-right font-medium min-w-20">{currency.format(appointment.amount)}</div>
+          <div className="flex flex-col items-end gap-2">
+            <Badge variant="outline" className={statusClassName(appointment.status)}>
+              {statusLabel(appointment.status)}
+            </Badge>
+            <div className="flex items-center gap-2">
+              <div className="text-right font-medium min-w-20">{currency.format(appointment.amount)}</div>
             {canManageAppointments && appointment.status === "pending" && (
               <>
                 <Button
@@ -150,9 +154,7 @@ export function RecentAppointments({ startDateKey, endDateKey }: { startDateKey:
                 </Button>
               </>
             )}
-            <Badge variant="outline" className={statusClassName(appointment.status)}>
-              {statusLabel(appointment.status)}
-            </Badge>
+            </div>
           </div>
         </div>
       ))}
