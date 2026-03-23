@@ -1,6 +1,6 @@
  "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useAuth } from "@/components/auth-context"
 import { getRecentAppointmentsForDashboard, updateAppointmentDetailsByAdmin, updateAppointmentStatus } from "@/lib/actions"
 import { format, parseISO } from "date-fns"
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 
 type RecentAppointmentsResponse = {
   appointmentsCount: number
@@ -42,29 +43,32 @@ export function RecentAppointments({ startDateKey, endDateKey }: { startDateKey:
     [],
   )
 
-  useEffect(() => {
+  const loadRecent = useCallback(async () => {
     if (!user?.barberId) return
 
-    let cancelled = false
-
-    const load = async () => {
-      setLoading(true)
-      try {
-        const res = await getRecentAppointmentsForDashboard(user.barberId, startDateKey, endDateKey)
-        if (!cancelled) setData(res)
-      } catch (err) {
-        console.error("RecentAppointments:", err)
-        if (!cancelled) setData(null)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
+    setLoading(true)
+    try {
+      const res = await getRecentAppointmentsForDashboard(user.barberId, startDateKey, endDateKey)
+      setData(res)
+    } catch (err) {
+      console.error("RecentAppointments:", err)
+      setData(null)
+    } finally {
+      setLoading(false)
     }
   }, [user?.barberId, startDateKey, endDateKey])
+
+  useEffect(() => {
+    void loadRecent()
+  }, [loadRecent])
+
+  useAppointmentsRealtime({
+    enabled: Boolean(user?.barberId),
+    mode: "barber",
+    barberId: user?.barberId,
+    onInvalidate: () => void loadRecent(),
+    channelScope: "dashboard-recent",
+  })
 
   const appointmentsCount = data?.appointmentsCount ?? 0
   const recent = data?.recent ?? []

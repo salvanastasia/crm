@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { format, parseISO } from "date-fns"
 import { it } from "date-fns/locale"
 import { useAuth } from "@/components/auth-context"
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Appointment } from "@/lib/types"
+import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 
 type AppointmentsListProps = {
   selectedDate?: Date
@@ -32,32 +33,41 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
 
   const selectedDayKey = useMemo(() => format(selectedDate ?? new Date(), "yyyy-MM-dd"), [selectedDate])
 
-  useEffect(() => {
+  const loadAppointments = useCallback(async () => {
     if (!user) return
 
-    const load = async () => {
-      setLoading(true)
-      try {
-        if (user.role === "client") {
-          const rows = await getClientAppointments(user.id)
-          setAppointments(rows)
-          return
-        }
-
-        if (user.barberId) {
-          const rows = await getAppointments(user.barberId)
-          setAppointments(rows)
-          return
-        }
-
-        setAppointments([])
-      } finally {
-        setLoading(false)
+    setLoading(true)
+    try {
+      if (user.role === "client") {
+        const rows = await getClientAppointments(user.id)
+        setAppointments(rows)
+        return
       }
-    }
 
-    void load()
+      if (user.barberId) {
+        const rows = await getAppointments(user.barberId)
+        setAppointments(rows)
+        return
+      }
+
+      setAppointments([])
+    } finally {
+      setLoading(false)
+    }
   }, [user?.id, user?.role, user?.barberId])
+
+  useEffect(() => {
+    void loadAppointments()
+  }, [loadAppointments])
+
+  useAppointmentsRealtime({
+    enabled: Boolean(user && (user.role === "client" || user.barberId)),
+    mode: user?.role === "client" ? "client" : "barber",
+    clientId: user?.role === "client" ? user.id : undefined,
+    barberId: user?.role !== "client" ? user?.barberId : undefined,
+    onInvalidate: () => void loadAppointments(),
+    channelScope: "calendar-list",
+  })
 
   const dayAppointments = useMemo(() => {
     return appointments.filter((a) => {

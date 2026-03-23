@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { format, parseISO } from "date-fns"
 import { it } from "date-fns/locale"
@@ -10,6 +10,7 @@ import { useAuth } from "@/components/auth-context"
 import { getClientAppointments } from "@/lib/actions"
 import type { Appointment } from "@/lib/types"
 import { toast } from "@/components/ui/use-toast"
+import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 
 export default function LeTuePrenotazioniPage() {
   const router = useRouter()
@@ -30,19 +31,28 @@ export default function LeTuePrenotazioniPage() {
     }
   }, [isLoading, isAuthenticated, user?.role, router])
 
-  useEffect(() => {
+  const loadClientAppointments = useCallback(async () => {
     if (!user || user.role !== "client") return
-    const load = async () => {
-      setLoadingAppointments(true)
-      try {
-        const rows = await getClientAppointments(user.id)
-        setAppointments(rows)
-      } finally {
-        setLoadingAppointments(false)
-      }
+    setLoadingAppointments(true)
+    try {
+      const rows = await getClientAppointments(user.id)
+      setAppointments(rows)
+    } finally {
+      setLoadingAppointments(false)
     }
-    void load()
   }, [user?.id, user?.role])
+
+  useEffect(() => {
+    void loadClientAppointments()
+  }, [loadClientAppointments])
+
+  useAppointmentsRealtime({
+    enabled: Boolean(user && user.role === "client"),
+    mode: "client",
+    clientId: user?.role === "client" ? user.id : undefined,
+    onInvalidate: () => void loadClientAppointments(),
+    channelScope: "client-bookings",
+  })
 
   useEffect(() => {
     if (searchParams.get("booked") !== "1") return
