@@ -11,7 +11,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
 
   const isClientBookingFlow = user?.role === "client" && pathname.startsWith("/booking")
-  const shouldShowHeader = pathname !== "/login"
+  const isAuthPage = pathname === "/login" || pathname === "/signup"
+  const shouldShowHeader = !isAuthPage
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -19,7 +20,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main
         className={cn(
           "flex-1",
-          isClientBookingFlow ? "px-4 py-4 md:py-8 w-full flex flex-col items-stretch" : "container mx-auto px-4 py-6",
+          isAuthPage
+            ? "w-full p-0"
+            : isClientBookingFlow
+              ? "px-4 py-4 md:py-8 w-full flex flex-col items-stretch"
+              : "container mx-auto px-4 py-6",
         )}
       >
         {children}
