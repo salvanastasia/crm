@@ -84,6 +84,27 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
     }
   }
 
+  const statusLabel = (status: Appointment["status"]) => {
+    if (status === "confirmed") return "Confermato"
+    if (status === "cancelled") return "Rifiutato"
+    if (status === "pending") return "In attesa"
+    if (status === "completed") return "Completato"
+    return status
+  }
+
+  const statusClassName = (status: Appointment["status"]) => {
+    if (status === "confirmed") {
+      return "bg-emerald-100 text-emerald-900 border-emerald-200"
+    }
+    if (status === "cancelled") {
+      return "bg-rose-200 text-rose-800 border-rose-300"
+    }
+    if (status === "pending") {
+      return "bg-[hsl(34.3_100%_91.8%)] text-[hsl(15.3_74.6%_27.8%)] border-[hsl(34.3_70%_75%)]"
+    }
+    return "bg-zinc-100 text-zinc-800 border-zinc-200"
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -99,7 +120,7 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
             dayAppointments.map((appointment) => (
               <div key={appointment.id} className="flex items-center justify-between gap-4 border-b pb-4 last:border-0">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-16 h-16 rounded-xl bg-black text-white flex flex-col items-center justify-center shrink-0">
+                  <div className="w-16 h-16 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
                     <span className="text-xs font-semibold uppercase leading-none">
                       {format(new Date(appointment.date), "MMM", { locale: it })}
                     </span>
@@ -134,11 +155,10 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
                     </>
                   )}
                   <Badge
-                    variant={
-                      appointment.status === "confirmed" ? "default" : appointment.status === "cancelled" ? "destructive" : "outline"
-                    }
+                    variant="outline"
+                    className={statusClassName(appointment.status)}
                   >
-                    {appointment.status}
+                    {statusLabel(appointment.status)}
                   </Badge>
                 </div>
               </div>

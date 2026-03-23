@@ -81,6 +81,27 @@ export function RecentAppointments({ startDateKey, endDateKey }: { startDateKey:
     }
   }
 
+  const statusLabel = (status: RecentAppointmentsResponse["recent"][number]["status"]) => {
+    if (status === "confirmed") return "Confermato"
+    if (status === "cancelled") return "Rifiutato"
+    if (status === "pending") return "In attesa"
+    if (status === "completed") return "Completato"
+    return status
+  }
+
+  const statusClassName = (status: RecentAppointmentsResponse["recent"][number]["status"]) => {
+    if (status === "confirmed") {
+      return "bg-emerald-100 text-emerald-900 border-emerald-200"
+    }
+    if (status === "cancelled") {
+      return "bg-rose-200 text-rose-800 border-rose-300"
+    }
+    if (status === "pending") {
+      return "bg-[hsl(34.3_100%_91.8%)] text-[hsl(15.3_74.6%_27.8%)] border-[hsl(34.3_70%_75%)]"
+    }
+    return "bg-zinc-100 text-zinc-800 border-zinc-200"
+  }
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-muted-foreground mb-6">
@@ -94,7 +115,7 @@ export function RecentAppointments({ startDateKey, endDateKey }: { startDateKey:
       {recent.map((appointment) => (
         <div key={appointment.id} className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-16 h-16 rounded-xl bg-black text-white flex flex-col items-center justify-center shrink-0">
+            <div className="w-16 h-16 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
               <span className="text-xs font-semibold uppercase leading-none">
                 {format(parseISO(appointment.date), "MMM", { locale: it })}
               </span>
@@ -129,14 +150,9 @@ export function RecentAppointments({ startDateKey, endDateKey }: { startDateKey:
                 </Button>
               </>
             )}
-            {appointment.status === "confirmed" ? (
-              <Badge
-                variant="outline"
-                className="bg-emerald-300 text-emerald-950 border-emerald-500 dark:bg-emerald-600 dark:text-emerald-50 dark:border-emerald-400"
-              >
-                Confermato
-              </Badge>
-            ) : null}
+            <Badge variant="outline" className={statusClassName(appointment.status)}>
+              {statusLabel(appointment.status)}
+            </Badge>
           </div>
         </div>
       ))}

@@ -16,6 +16,7 @@ import { PaymentSelector } from "@/components/payment-selector"
 import { BookingSummary } from "@/components/booking-summary"
 import { Steps, Step } from "@/components/ui/steps"
 import type { Service, Resource, BrandSettings } from "@/lib/types"
+import { toast } from "@/components/ui/use-toast"
 
 export default function BookingPage() {
   const { isAuthenticated, user, refreshProfile } = useAuth()
@@ -121,9 +122,12 @@ export default function BookingPage() {
         return
       }
 
-      // Dopo l'inserimento, mostra il calendario aggiornato.
-      router.push("/calendario")
-      router.refresh?.()
+      toast({
+        title: "Prenotazione completata",
+        description: "La tua prenotazione e' stata inviata con successo.",
+      })
+
+      router.push("/le-tue-prenotazioni?booked=1")
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : "Errore durante la prenotazione")
     } finally {

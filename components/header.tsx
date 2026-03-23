@@ -106,6 +106,12 @@ export function Header() {
                       Prenota
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/le-tue-prenotazioni" className="flex items-center">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Le Tue Prenotazioni
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -178,6 +184,9 @@ export function Header() {
                     <>
                       <DropdownMenuItem asChild>
                         <Link href="/booking">Prenota</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/le-tue-prenotazioni">Le Tue Prenotazioni</Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                     </>
