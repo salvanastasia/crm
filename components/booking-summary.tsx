@@ -5,7 +5,8 @@ import { it } from "date-fns/locale"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { CreditCard, Banknote, CreditCardIcon, CalendarIcon, Clock, User } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { CreditCard, Banknote, CreditCardIcon, CalendarIcon, Clock } from "lucide-react"
 import type { Service, Resource } from "@/lib/types"
 
 interface BookingSummaryProps {
@@ -100,9 +101,16 @@ export function BookingSummary({
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary" />
-                </div>
+                <Avatar className="h-10 w-10 shrink-0 border border-border">
+                  <AvatarImage src={resource.imageUrl ?? ""} alt={resource.name} />
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                    {resource.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <p className="text-sm text-muted-foreground">Dipendente</p>
                   <p className="font-medium">{resource.name}</p>

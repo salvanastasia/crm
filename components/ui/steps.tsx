@@ -10,7 +10,7 @@ export function Steps({ currentStep, className, ...props }: StepsProps) {
   const steps = childrenArray.filter((child) => React.isValidElement(child) && child.type === Step)
 
   return (
-    <div className={cn("flex items-center", className)} {...props}>
+    <div className={cn("flex w-full flex-wrap items-center justify-center gap-y-4", className)} {...props}>
       {React.Children.map(steps, (step, index) => {
         if (!React.isValidElement(step)) return null
 
@@ -83,7 +83,14 @@ export function Step({
           {title}
         </span>
       </div>
-      {!isLast && <div className={cn("h-[2px] w-10 flex-1 mx-2", isCompleted ? "bg-primary" : "bg-muted")} />}
+      {!isLast && (
+        <div
+          className={cn(
+            "mx-1 h-[2px] w-6 shrink-0 sm:mx-2 sm:w-10",
+            isCompleted ? "bg-primary" : "bg-muted",
+          )}
+        />
+      )}
     </div>
   )
 }
