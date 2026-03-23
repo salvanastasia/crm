@@ -1,13 +1,14 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Outfit } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AppShell } from "@/components/app-shell"
 import { AuthProvider } from "@/components/auth-context"
 import { Toaster } from "@/components/ui/toaster"
+import { cn } from "@/lib/utils"
 
-const inter = Inter({ subsets: ["latin"] })
+const outfit = Outfit({ subsets: ["latin"], variable: "--font-sans" })
 
 export const metadata: Metadata = {
   title: "Barber CRM",
@@ -21,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="it" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background`} suppressHydrationWarning>
+    <html lang="it" suppressHydrationWarning className={cn(outfit.variable, "font-sans")}>
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
           <AuthProvider>
             <AppShell>{children}</AppShell>
