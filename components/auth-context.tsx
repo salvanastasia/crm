@@ -60,6 +60,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [supabase],
   )
 
+  const resolveProfileWithTimeout = useCallback(
+    async (sessionUser: SupabaseUser, timeoutMs = 8000): Promise<User | null> => {
+      try {
+        const timeout = new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), timeoutMs)
+        })
+        const profile = await Promise.race([upsertAndLoadProfile(sessionUser), timeout])
+        if (!profile) {
+          console.warn("Auth profile resolution timed out or returned null")
+        }
+        return profile
+      } catch (error) {
+        console.error("resolveProfileWithTimeout error:", error)
+        return null
+      }
+    },
+    [upsertAndLoadProfile],
+  )
+
   const refreshProfile = useCallback(async () => {
     if (!supabase) return
     let session
@@ -76,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
     if (!session) return
-    const user = await upsertAndLoadProfile(session.user)
+    const user = await resolveProfileWithTimeout(session.user)
     if (user) {
       setAuthState((prev) => ({
         ...prev,
@@ -116,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } = await supabase.auth.getSession()
 
         if (session) {
-          const user = await upsertAndLoadProfile(session.user)
+          const user = await resolveProfileWithTimeout(session.user)
           if (user) {
             setAuthState({
               user,
@@ -178,7 +197,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        const user = await upsertAndLoadProfile(session.user)
+        const user = await resolveProfileWithTimeout(session.user)
         if (user) {
           setAuthState({
             user,
@@ -186,6 +205,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false,
             error: null,
           })
+
+          // Keep current page on hard refresh/session restore.
+          // Redirect only when user is on auth pages right after login.
+          const isAuthPage =
+            currentPath === "/login" || currentPath.startsWith("/signup") || currentPath.startsWith("/register")
 
           let target: string
           if (user.role === "client") {
@@ -195,9 +219,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           } else {
             target = "/dashboard"
           }
-          if (currentPath !== target) {
+          if (isAuthPage && currentPath !== target) {
             router.replace(target)
-            router.refresh()
           }
         }
       } else if (event === "SIGNED_OUT") {
@@ -210,7 +233,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const currentPath = pathnameRef.current ?? (typeof window !== "undefined" ? window.location.pathname : "")
         if (currentPath !== "/login") {
           router.replace("/login")
-          router.refresh()
         }
       }
     })
@@ -220,7 +242,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase, router, upsertAndLoadProfile])
+  }, [supabase, router, resolveProfileWithTimeout])
 
   const loginWithPassword = async (email: string, password: string) => {
     if (!supabase) {
@@ -337,7 +359,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       router.replace("/login")
-      router.refresh()
     } catch (error) {
       console.error("Errore durante il logout:", error)
     } finally {

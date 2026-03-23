@@ -1208,6 +1208,28 @@ export async function getClientAppointments(clientId: string): Promise<Appointme
   return enrichAppointments(supabase, rows)
 }
 
+export async function updateAppointmentStatus(
+  appointmentId: string,
+  status: "confirmed" | "cancelled",
+  barberId: string,
+): Promise<boolean> {
+  const supabase = await db()
+  if (!supabase || !appointmentId || !barberId) return false
+
+  const { error } = await supabase
+    .from("appointments")
+    .update({ status })
+    .eq("id", appointmentId)
+    .eq("barber_id", barberId)
+
+  if (error) {
+    console.error("updateAppointmentStatus:", error)
+    return false
+  }
+
+  return true
+}
+
 export async function getDashboardStats(
   barberId: string,
   startDateKey: string,

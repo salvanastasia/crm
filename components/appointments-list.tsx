@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
 import { useAuth } from "@/components/auth-context"
-import { getAppointments, getClientAppointments } from "@/lib/actions"
+import { getAppointments, getClientAppointments, updateAppointmentStatus } from "@/lib/actions"
+import { Button } from "@/components/ui/button"
 import type { Appointment } from "@/lib/types"
 
 type AppointmentsListProps = {
@@ -18,6 +19,7 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
   const { user } = useAuth()
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loading, setLoading] = useState(false)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   const selectedDayKey = useMemo(() => format(selectedDate ?? new Date(), "yyyy-MM-dd"), [selectedDate])
 
@@ -56,6 +58,32 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
     })
   }, [appointments, selectedDayKey])
 
+  const canManageAppointments = user?.role === "admin" || user?.role === "staff"
+
+  const normalizeTime = (time: string) => String(time).slice(0, 5)
+
+  const handleStatusChange = async (appointmentId: string, status: "confirmed" | "cancelled") => {
+    if (!user?.barberId) return
+    setUpdatingId(appointmentId)
+    try {
+      const ok = await updateAppointmentStatus(appointmentId, status, user.barberId)
+      if (!ok) return
+
+      setAppointments((prev) =>
+        prev.map((a) =>
+          a.id === appointmentId
+            ? {
+                ...a,
+                status,
+              }
+            : a,
+        ),
+      )
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -80,11 +108,31 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
                   <div className="min-w-0">
                     <div className="font-medium truncate">{appointment.clientName}</div>
                     <div className="text-sm text-muted-foreground truncate">
-                      {appointment.serviceName} - {appointment.time}
+                      {appointment.serviceName} - {normalizeTime(appointment.time)}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
+                  {canManageAppointments && appointment.status === "pending" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={updatingId === appointment.id}
+                        onClick={() => handleStatusChange(appointment.id, "confirmed")}
+                      >
+                        Conferma
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={updatingId === appointment.id}
+                        onClick={() => handleStatusChange(appointment.id, "cancelled")}
+                      >
+                        Rifiuta
+                      </Button>
+                    </>
+                  )}
                   <Badge
                     variant={
                       appointment.status === "confirmed" ? "default" : appointment.status === "cancelled" ? "destructive" : "outline"
