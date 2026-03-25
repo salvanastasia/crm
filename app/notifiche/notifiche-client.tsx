@@ -7,8 +7,26 @@ import { it } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-context"
+import { cn } from "@/lib/utils"
 import { getMyNotifications, markNotificationsRead } from "@/lib/actions"
 import type { Notification } from "@/lib/types"
+
+const NOTIFICATIONS_CHANGED = "barbercrm:notifications-changed"
+
+function bumpNotificationsListeners() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(NOTIFICATIONS_CHANGED))
+  }
+}
+
+function sortNotificationsForDisplay(list: Notification[]): Notification[] {
+  return [...list].sort((a, b) => {
+    const ra = a.readAt ? 1 : 0
+    const rb = b.readAt ? 1 : 0
+    if (ra !== rb) return ra - rb
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  })
+}
 
 export function NotificheClient() {
   const router = useRouter()
@@ -21,7 +39,8 @@ export function NotificheClient() {
     setLoading(true)
     try {
       const data = await getMyNotifications({ limit: 50, offset: 0 })
-      setRows(data)
+      setRows(sortNotificationsForDisplay(data))
+      bumpNotificationsListeners()
     } finally {
       setLoading(false)
     }
@@ -44,7 +63,12 @@ export function NotificheClient() {
     try {
       const ok = await markNotificationsRead(unreadIds)
       if (ok) {
-        setRows((prev) => prev.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })))
+        setRows((prev) =>
+          sortNotificationsForDisplay(
+            prev.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })),
+          ),
+        )
+        bumpNotificationsListeners()
       }
     } finally {
       setMarking(false)
@@ -77,12 +101,18 @@ export function NotificheClient() {
       ) : rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nessuna notifica.</p>
       ) : (
-        <ul className="w-full divide-y divide-border">
+        <ul className="w-full max-md:divide-y max-md:divide-border md:space-y-3">
           {rows.map((n) => {
             const created = new Date(n.createdAt)
             const ago = formatDistanceToNow(created, { addSuffix: true, locale: it })
             return (
-              <li key={n.id} className="flex items-start justify-between gap-4 py-4">
+              <li
+                key={n.id}
+                className={cn(
+                  "flex items-start justify-between gap-4 py-4",
+                  "md:rounded-md md:border md:border-border md:bg-card md:p-4 md:py-4",
+                )}
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-medium truncate">{n.title}</p>

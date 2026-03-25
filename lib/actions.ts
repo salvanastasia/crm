@@ -1607,6 +1607,28 @@ export async function getMyNotifications(params?: {
   }))
 }
 
+export async function getMyUnreadNotificationCount(): Promise<number> {
+  const supabase = await db()
+  if (!supabase) return 0
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return 0
+
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .is("read_at", null)
+
+  if (error) {
+    console.error("getMyUnreadNotificationCount:", error)
+    return 0
+  }
+
+  return count ?? 0
+}
+
 export async function markNotificationsRead(ids: string[]): Promise<boolean> {
   const supabase = await db()
   if (!supabase) return false

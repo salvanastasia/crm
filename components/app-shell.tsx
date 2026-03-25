@@ -25,6 +25,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith("/update-password")
 
   const shouldShowHeader = !isAuthPage
+  /** Cliente su browser mobile e app Capacitor: niente header (navigazione in bottom bar + safe area sul main). */
+  const hideClientHeaderOnCompact =
+    user?.role === "client" && (isMobileViewport || isCapacitorNative)
 
   const navEligible =
     !isLoading &&
@@ -67,11 +70,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
     >
       {isCapacitorNative && <CapacitorDeepLinkBridge />}
-      {shouldShowHeader && <Header dockedChrome={dockedChrome} />}
+      {shouldShowHeader && !hideClientHeaderOnCompact && <Header dockedChrome={dockedChrome} />}
       <main
         className={cn(
           "min-w-0",
           dockedChrome ? "min-h-0 flex-1 overflow-y-auto overscroll-y-contain" : "flex-1",
+          dockedChrome && hideClientHeaderOnCompact && "pt-[env(safe-area-inset-top,0px)]",
           mainBottomPad,
           isAuthPage
             ? "w-full p-0"
