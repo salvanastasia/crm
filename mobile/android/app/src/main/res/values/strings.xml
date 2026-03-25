@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Barber CRM</string>
+    <string name="title_activity_main">Barber CRM</string>
+    <string name="package_name">com.barbercrm.app</string>
+    <string name="custom_url_scheme">com.barbercrm.app</string>
+</resources>

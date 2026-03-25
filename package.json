@@ -6,9 +6,19 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "cap:sync": "npx cap sync",
+    "cap:copy": "npx cap copy",
+    "cap:open:ios": "npx cap open ios",
+    "cap:open:android": "npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
+    "@capacitor/status-bar": "^8.0.2",
     "@hookform/resolvers": "^3.10.0",
     "@hugeicons/core-free-icons": "^4.0.0",
     "@hugeicons/react": "^1.1.6",

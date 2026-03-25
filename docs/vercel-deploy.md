@@ -45,6 +45,8 @@ In **Supabase Dashboard → Authentication → URL configuration**:
 
 In **OAuth / email**, verifica che i redirect puntino al dominio Vercel se usi magic link / OAuth.
 
+Per l’**app mobile** (Capacitor) che carica questo stesso deploy, imposta `CAP_SERVER_URL` sull’URL di produzione prima di `npx cap sync` e allinea **Redirect URLs** e **Site URL** come sopra. Dettagli: [docs/mobile-capacitor.md](./mobile-capacitor.md).
+
 ## 5. Deploy
 
 Clicca **Deploy**. Ogni push sul branch collegato genera un nuovo deploy.

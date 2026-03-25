@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Outfit } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -13,7 +13,13 @@ const outfit = Outfit({ subsets: ["latin"], variable: "--font-sans" })
 export const metadata: Metadata = {
   title: "Barber CRM",
   description: "CRM per gestione clienti e prenotazioni",
-    generator: 'v0.app'
+  generator: "v0.app",
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({

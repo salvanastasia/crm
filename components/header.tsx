@@ -31,20 +31,15 @@ import { useAuth } from "@/components/auth-context"
 import type { Appointment, BrandSettings } from "@/lib/types"
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 import { parseAppointmentDateLocal } from "@/lib/appointment-availability"
-
-const staffNavItems = [
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Clienti", href: "/clienti" },
-  { name: "Servizi", href: "/servizi" },
-  { name: "Team", href: "/risorse" },
-  { name: "Calendario", href: "/calendario" },
-]
+import { staffNavItems } from "@/lib/mobile-nav"
+import { useIsCapacitorNative } from "@/hooks/use-is-capacitor-native"
 
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
   const [settings, setSettings] = useState<BrandSettings | null>(null)
   const { user, isAuthenticated, logout } = useAuth()
+  const isCapacitorNative = useIsCapacitorNative()
 
   const isStaff = user && (user.role === "admin" || user.role === "staff")
   const isClient = user?.role === "client"
@@ -341,7 +336,7 @@ export function Header() {
               <span className="font-semibold">{brandLabel}</span>
             </Link>
 
-            {isAuthenticated && isStaff && (
+            {isAuthenticated && isStaff && !isCapacitorNative && (
               <nav className="hidden md:flex items-center space-x-4">
                 {staffNavItems.map((item) => (
                   <Link
