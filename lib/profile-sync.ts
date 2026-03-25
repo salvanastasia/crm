@@ -50,6 +50,7 @@ export async function syncProfileFromAuthUser(
   let selectError = first.error
 
   if (selectError) {
+    // eslint-disable-next-line no-console
     console.error("syncProfileFromAuthUser select:", selectError)
 
     // Some role/migration mismatches can leave the app unable to read its own profile.
@@ -78,6 +79,7 @@ export async function syncProfileFromAuthUser(
       phone: (sessionUser.user_metadata?.phone as string | undefined) ?? null,
     })
     if (insertError) {
+      // eslint-disable-next-line no-console
       console.error("syncProfileFromAuthUser insert:", insertError)
       // #region agent log
       fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-auth-callback',hypothesisId:'M',location:'lib/profile-sync.ts:syncProfileFromAuthUser',message:'syncProfileFromAuthUser:insert:error',data:{errorMessage:insertError?.message??null},timestamp:Date.now()})}).catch(()=>{})
@@ -94,6 +96,7 @@ export async function syncProfileFromAuthUser(
       })
       .eq("id", sessionUser.id)
     if (updateError) {
+      // eslint-disable-next-line no-console
       console.error("syncProfileFromAuthUser update:", updateError)
       // #region agent log
       fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-auth-callback',hypothesisId:'M',location:'lib/profile-sync.ts:syncProfileFromAuthUser',message:'syncProfileFromAuthUser:update:error',data:{errorMessage:updateError?.message??null},timestamp:Date.now()})}).catch(()=>{})
@@ -109,6 +112,7 @@ export async function syncProfileFromAuthUser(
     .single()
 
   if (finalError || !profileData) {
+    // eslint-disable-next-line no-console
     console.error("syncProfileFromAuthUser final select:", finalError)
     // #region agent log
     fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-auth-callback',hypothesisId:'M',location:'lib/profile-sync.ts:syncProfileFromAuthUser',message:'syncProfileFromAuthUser:final:select:error',data:{errorMessage:finalError?.message??null},timestamp:Date.now()})}).catch(()=>{})
