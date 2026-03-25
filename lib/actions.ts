@@ -164,7 +164,44 @@ export async function getResources(barberId: string): Promise<Resource[]> {
     console.error("getResources:", error)
     return []
   }
-  return Promise.all((rows ?? []).map((r) => mapResourceRow(supabase, r)))
+
+  const resources = rows ?? []
+  if (resources.length === 0) return []
+
+  // Batch junction fetch to avoid N+1 queries (resource -> resource_services -> serviceIds).
+  const resourceIds = resources.map((r) => r.id)
+  const { data: links, error: linksErr } = await supabase
+    .from("resource_services")
+    .select("resource_id, service_id")
+    .in("resource_id", resourceIds)
+
+  if (linksErr) {
+    console.error("getResources(resource_services):", linksErr)
+    return []
+  }
+
+  const serviceIdsByResource = new Map<string, string[]>()
+  for (const link of links ?? []) {
+    const rid = String((link as any).resource_id ?? "")
+    const sid = String((link as any).service_id ?? "")
+    if (!rid || !sid) continue
+    const prev = serviceIdsByResource.get(rid) ?? []
+    prev.push(sid)
+    serviceIdsByResource.set(rid, prev)
+  }
+
+  return resources.map((r) => ({
+    id: r.id,
+    name: r.name,
+    email: r.email ?? "",
+    phone: r.phone ?? "",
+    role: r.role,
+    bio: r.bio ?? undefined,
+    imageUrl: r.image_url ?? undefined,
+    isActive: r.is_active,
+    barberId: r.barber_id,
+    serviceIds: serviceIdsByResource.get(String(r.id)) ?? [],
+  }))
 }
 
 export async function getResourceById(id: string): Promise<Resource | null> {
