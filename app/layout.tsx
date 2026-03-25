@@ -30,7 +30,12 @@ export default function RootLayout({
   return (
     <html lang="it" suppressHydrationWarning className={cn(outfit.variable, "font-sans")}>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased" suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} disableTransitionOnChange>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem={true}
+          disableTransitionOnChange
+        >
           <AuthProvider>
             <AppShell>{children}</AppShell>
             <Toaster />

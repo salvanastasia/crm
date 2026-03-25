@@ -5,6 +5,7 @@ import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Capacitor } from "@capacitor/core"
 import { StatusBar, Style } from "@capacitor/status-bar"
+import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
 import { useAuth } from "@/components/auth-context"
@@ -18,6 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading } = useAuth()
   const isCapacitorNative = useIsCapacitorNative()
   const isMobileViewport = useMobile()
+  const { resolvedTheme } = useTheme()
 
   const isClientBookingFlow = user?.role === "client" && pathname.startsWith("/booking")
   const isAuthPage =
@@ -47,19 +49,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const mainNeedsTopSafeArea =
     !showHeader && (isCapacitorNative || (dockedChrome && hideClientHeaderOnCompact))
 
+  const isDark = resolvedTheme === "dark"
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
     const init = async () => {
       try {
+        // In app nativa vogliamo contenuto rispettando la safe-area:
+        // usiamo overlay=false e impostiamo colore/stile in base al tema.
         await StatusBar.setOverlaysWebView({ overlay: false })
-        // Capacitor: Style.Light = icone/testo scuri (per sfondo chiaro), non segue dark mode di sistema
-        await StatusBar.setStyle({ style: Style.Light })
+        await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light })
+
+        // Su Android (dove supportato) evita lo sfondo "nero fisso" della status bar.
+        await StatusBar.setBackgroundColor({
+          color: isDark ? "#000000" : "#ffffff",
+        })
       } catch {
         /* ignore */
       }
     }
     void init()
-  }, [])
+  }, [isDark])
 
   useEffect(() => {
     if (!dockedChrome) return
