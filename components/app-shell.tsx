@@ -4,7 +4,7 @@ import type React from "react"
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Capacitor } from "@capacitor/core"
-import { StatusBar } from "@capacitor/status-bar"
+import { StatusBar, Style } from "@capacitor/status-bar"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
 import { useAuth } from "@/components/auth-context"
@@ -49,7 +49,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
-    void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {})
+    const init = async () => {
+      try {
+        await StatusBar.setOverlaysWebView({ overlay: false })
+        // Capacitor: Style.Light = icone/testo scuri (per sfondo chiaro), non segue dark mode di sistema
+        await StatusBar.setStyle({ style: Style.Light })
+      } catch {
+        /* ignore */
+      }
+    }
+    void init()
   }, [])
 
   useEffect(() => {
