@@ -8,7 +8,7 @@ import { useAuth } from "@/components/auth-context"
 import { useIsCapacitorNative } from "@/hooks/use-is-capacitor-native"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-export function MobileBottomNav() {
+export function MobileBottomNav({ docked = false }: { docked?: boolean }) {
   const pathname = usePathname() ?? ""
   const { user } = useAuth()
   const isCapacitorNative = useIsCapacitorNative()
@@ -24,8 +24,11 @@ export function MobileBottomNav() {
   return (
     <nav
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 box-border w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-        isCapacitorNative ? "flex flex-col" : "flex flex-col md:hidden",
+        "z-40 box-border w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 flex flex-col",
+        docked
+          ? "relative shrink-0"
+          : "fixed inset-x-0 bottom-0",
+        !docked && !isCapacitorNative && "md:hidden",
       )}
       style={{ paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
       aria-label="Navigazione principale"

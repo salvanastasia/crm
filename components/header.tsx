@@ -38,6 +38,10 @@ import { useIsCapacitorNative } from "@/hooks/use-is-capacitor-native"
 const headerBarClass =
   "sticky top-0 z-[100] border-b bg-background supports-[backdrop-filter]:bg-background/90 pt-[env(safe-area-inset-top,0px)]"
 
+/** Shell con scroll solo nel main: niente sticky — evita allungamento al bounce iOS */
+const headerDockedClass =
+  "shrink-0 z-[100] border-b bg-background supports-[backdrop-filter]:bg-background/90 pt-[env(safe-area-inset-top,0px)]"
+
 const headerPadInline = cn(
   "mx-auto w-full max-w-full px-4 md:container md:px-4",
   "max-md:pl-[max(1rem,env(safe-area-inset-left,0px))] max-md:pr-[max(1rem,env(safe-area-inset-right,0px))]",
@@ -47,7 +51,7 @@ const headerPadInline = cn(
 const headerHitTarget =
   "relative inline-flex min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center p-0 [&_svg]:pointer-events-none"
 
-export function Header() {
+export function Header({ dockedChrome = false }: { dockedChrome?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const [settings, setSettings] = useState<BrandSettings | null>(null)
@@ -215,7 +219,7 @@ export function Header() {
   /** Client booking: solo logo, tema, utente — niente CRM */
   if (isAuthenticated && isClientBookingFlow) {
     return (
-      <header className={headerBarClass}>
+      <header className={dockedChrome ? headerDockedClass : headerBarClass}>
         <div className={cn(headerPadInline, "max-w-3xl")}>
           <div className="flex h-14 min-h-14 items-center justify-between">
             <Link href="/booking" className="flex items-center gap-2 min-w-0">
@@ -347,7 +351,7 @@ export function Header() {
   }
 
   return (
-    <header className={headerBarClass}>
+    <header className={dockedChrome ? headerDockedClass : headerBarClass}>
       <div className={headerPadInline}>
         <div className="flex h-16 min-h-16 items-center justify-between">
           <div className="flex items-center gap-8">
