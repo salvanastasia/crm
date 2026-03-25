@@ -15,6 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { EditResourceDialog } from "@/components/edit-resource-dialog"
@@ -30,6 +31,7 @@ export function ResourceList() {
   const [filteredResources, setFilteredResources] = useState<Resource[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [isLoadingResources, setIsLoadingResources] = useState(true)
   const [resourceToDelete, setResourceToDelete] = useState<Resource | null>(null)
   const [resourceToEdit, setResourceToEdit] = useState<Resource | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -37,22 +39,28 @@ export function ResourceList() {
 
   useEffect(() => {
     if (!barberId) {
+      setIsLoadingResources(false)
       setResources([])
       setFilteredResources([])
       setServices([])
       return
     }
     const loadData = async () => {
+      setIsLoadingResources(true)
       // Ensure the logged-in admin appears in the Team list as a resource.
-      if (user?.role === "admin" && !didEnsureOwner) {
-        await ensureOwnerResource(barberId)
-        setDidEnsureOwner(true)
+      try {
+        if (user?.role === "admin" && !didEnsureOwner) {
+          await ensureOwnerResource(barberId)
+          setDidEnsureOwner(true)
+        }
+        const resourcesData = await getResources(barberId)
+        const servicesData = await getServices(barberId)
+        setResources(resourcesData)
+        setFilteredResources(resourcesData)
+        setServices(servicesData)
+      } finally {
+        setIsLoadingResources(false)
       }
-      const resourcesData = await getResources(barberId)
-      const servicesData = await getServices(barberId)
-      setResources(resourcesData)
-      setFilteredResources(resourcesData)
-      setServices(servicesData)
     }
 
     void loadData()
@@ -124,12 +132,16 @@ export function ResourceList() {
       <div className="flex items-center mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cerca collaboratore..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          {isLoadingResources ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <Input
+              placeholder="Cerca collaboratore..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
         </div>
       </div>
 
@@ -146,7 +158,39 @@ export function ResourceList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredResources.length === 0 ? (
+            {isLoadingResources ? (
+              Array.from({ length: 6 }).map((_, idx) => (
+                <TableRow key={`skeleton-${idx}`}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-36 rounded-md" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-2">
+                      <Skeleton className="h-4 w-44 rounded-md" />
+                      <Skeleton className="h-4 w-28 rounded-md" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-64 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-5 w-20 rounded-md" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : filteredResources.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                   {searchQuery ? "Nessun collaboratore trovato" : "Nessun collaboratore disponibile"}

@@ -13,6 +13,7 @@ import { DashboardStats } from "@/components/dashboard-stats"
 import { RevenueChart } from "@/components/revenue-chart"
 import { RecentAppointments } from "@/components/recent-appointments"
 import { useAuth } from "@/components/auth-context"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function Dashboard() {
   const { isAuthenticated, isLoading, user } = useAuth()
@@ -60,10 +61,35 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Caricamento...</p>
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <Skeleton className="h-10 w-40" />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-background rounded-md px-3 py-2">
+              <Skeleton className="h-4 w-4" />
+              <div className="space-y-2">
+                <Skeleton className="h-9 w-[140px] rounded-md" />
+                <Skeleton className="h-9 w-[96px] rounded-md" />
+              </div>
+            </div>
+            <Skeleton className="h-9 w-28 rounded-md" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 overflow-hidden rounded-lg border bg-card">
+            <div className="p-6 space-y-6">
+              <Skeleton className="h-5 w-48 rounded-md" />
+              <Skeleton className="h-[300px] w-full rounded-lg" />
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border bg-card">
+            <div className="p-6 space-y-4">
+              <Skeleton className="h-5 w-40 rounded-md" />
+              <Skeleton className="h-32 w-full rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     )

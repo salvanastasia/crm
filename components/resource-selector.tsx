@@ -8,6 +8,7 @@ import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getResources } from "@/lib/actions"
 import type { Resource } from "@/lib/types"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface ResourceSelectorProps {
   barberId: string
@@ -54,8 +55,19 @@ export function ResourceSelector({
   if (isLoading) {
     return (
       <div className="text-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p>Caricamento dipendenti...</p>
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-10 rounded-full mx-auto" />
+          <Skeleton className="h-4 w-56 rounded-md mx-auto" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="rounded-lg border border-border/50 p-4 space-y-3">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <Skeleton className="h-4 w-2/3 rounded-md" />
+                <Skeleton className="h-4 w-1/2 rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }

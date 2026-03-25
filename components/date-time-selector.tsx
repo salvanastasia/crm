@@ -11,6 +11,7 @@ import { getBookedIntervalsForResource, getBusinessHours } from "@/lib/actions"
 import type { BookedIntervalRow } from "@/lib/appointment-availability"
 import type { BusinessHours } from "@/lib/types"
 import { slotOverlapsAnyBusy, timeStringToMinutes, toBusyIntervals } from "@/lib/appointment-availability"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface DateTimeSelectorProps {
   barberId: string
@@ -170,9 +171,24 @@ export function DateTimeSelector({
 
   if (isLoading) {
     return (
-      <div className="text-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-        <p>Caricamento disponibilità...</p>
+      <div className="space-y-6">
+        <div className="text-center mb-6">
+          <Skeleton className="h-6 w-56 mx-auto rounded-md" />
+          <Skeleton className="h-4 w-72 mt-2 mx-auto rounded-md" />
+        </div>
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 7 }).map((_, idx) => (
+                <div key={idx} className="text-center rounded-md border border-border/50 p-2">
+                  <Skeleton className="h-3 w-10 mx-auto rounded-md" />
+                  <Skeleton className="h-4 w-6 mt-2 mx-auto rounded-md" />
+                </div>
+              ))}
+            </div>
+            <Skeleton className="h-[220px] w-full rounded-lg" />
+          </CardContent>
+        </Card>
       </div>
     )
   }

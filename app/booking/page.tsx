@@ -15,6 +15,7 @@ import { DateTimeSelector } from "@/components/date-time-selector"
 import { PaymentSelector } from "@/components/payment-selector"
 import { BookingSummary } from "@/components/booking-summary"
 import { Steps, Step } from "@/components/ui/steps"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { Service, Resource, BrandSettings } from "@/lib/types"
 import { toast } from "@/components/ui/use-toast"
 
@@ -186,14 +187,41 @@ export default function BookingPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto py-10">
-        <Card>
-          <CardContent className="p-10 flex justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p>Caricamento in corso...</p>
+        <div className="space-y-8">
+          <div className="flex justify-center">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Skeleton className="h-8 w-8 rounded-full" />
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <Card className="w-full max-w-2xl mx-auto shadow-sm">
+            <CardHeader>
+              <div className="space-y-4">
+                <Skeleton className="h-5 w-60 rounded-md" />
+                <div className="flex items-center gap-4">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <div key={idx} className="flex flex-col items-center">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-3 w-16 mt-2 rounded-md" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-10 w-full rounded-md" />
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <div key={idx} className="rounded-lg border border-border/50 p-4 space-y-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <Skeleton className="h-4 w-2/3 rounded-md" />
+                    <Skeleton className="h-4 w-1/2 rounded-md" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
@@ -223,7 +251,7 @@ export default function BookingPage() {
         <CardHeader>
           <Steps currentStep={currentStep} className="mb-4">
             <Step title="Servizio" />
-            <Step title="Dipendente" />
+            <Step title="Collaboratore" />
             <Step title="Data e Ora" />
             <Step title="Pagamento" />
             <Step title="Conferma" />

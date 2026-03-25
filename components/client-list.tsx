@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { EditClientDialog } from "@/components/edit-client-dialog"
 import { useAuth } from "@/components/auth-context"
 import { getClients, deleteClient } from "@/lib/actions"
@@ -27,6 +28,7 @@ export function ClientList() {
   const [clients, setClients] = useState<Client[]>([])
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [isLoadingClients, setIsLoadingClients] = useState(true)
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null)
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -34,20 +36,26 @@ export function ClientList() {
 
   useEffect(() => {
     if (!barberId) {
+      setIsLoadingClients(false)
       setClients([])
       setFilteredClients([])
       return
     }
     const loadClients = async () => {
+      setIsLoadingClients(true)
       // #region agent log
       fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'pre-fix-client',hypothesisId:'B',location:'components/client-list.tsx',message:'loadClients:start',data:{hasBarberId:!!barberId},timestamp:Date.now()})}).catch(()=>{})
       // #endregion
-      const data = await getClients(barberId)
-      setClients(data)
-      setFilteredClients(data)
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'pre-fix-client',hypothesisId:'B',location:'components/client-list.tsx',message:'loadClients:done',data:{count:(data??[]).length},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
+      try {
+        const data = await getClients(barberId)
+        setClients(data)
+        setFilteredClients(data)
+        // #region agent log
+        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'pre-fix-client',hypothesisId:'B',location:'components/client-list.tsx',message:'loadClients:done',data:{count:(data??[]).length},timestamp:Date.now()})}).catch(()=>{})
+        // #endregion
+      } finally {
+        setIsLoadingClients(false)
+      }
     }
 
     void loadClients()
@@ -127,12 +135,16 @@ export function ClientList() {
       <div className="flex items-center mb-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cerca cliente..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          {isLoadingClients ? (
+            <Skeleton className="h-10 w-full rounded-md" />
+          ) : (
+            <Input
+              placeholder="Cerca cliente..."
+              className="pl-8"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          )}
         </div>
       </div>
 
@@ -148,7 +160,33 @@ export function ClientList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.length === 0 ? (
+            {isLoadingClients ? (
+              Array.from({ length: 6 }).map((_, idx) => (
+                <TableRow key={`skeleton-${idx}`}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-28 rounded-md" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-40 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20 rounded-md" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : filteredClients.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                   {searchQuery ? "Nessun cliente trovato" : "Nessun cliente disponibile"}

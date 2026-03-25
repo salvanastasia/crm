@@ -14,6 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Skeleton } from "@/components/ui/skeleton"
 import { EditServiceDialog } from "@/components/edit-service-dialog"
 import { useAuth } from "@/components/auth-context"
 import { getServices, deleteService } from "@/lib/actions"
@@ -23,6 +24,7 @@ export function ServiceList() {
   const { user } = useAuth()
   const barberId = user?.barberId
   const [services, setServices] = useState<Service[]>([])
+  const [isLoadingServices, setIsLoadingServices] = useState(true)
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null)
   const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -30,12 +32,18 @@ export function ServiceList() {
 
   useEffect(() => {
     if (!barberId) {
+      setIsLoadingServices(false)
       setServices([])
       return
     }
     const loadServices = async () => {
-      const data = await getServices(barberId)
-      setServices(data)
+      setIsLoadingServices(true)
+      try {
+        const data = await getServices(barberId)
+        setServices(data)
+      } finally {
+        setIsLoadingServices(false)
+      }
     }
 
     void loadServices()
@@ -90,7 +98,30 @@ export function ServiceList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {services.length === 0 ? (
+            {isLoadingServices ? (
+              Array.from({ length: 6 }).map((_, idx) => (
+                <TableRow key={`skeleton-${idx}`}>
+                  <TableCell className="font-medium">
+                    <Skeleton className="h-4 w-40 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24 rounded-md" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32 rounded-md" />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : services.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
                   Nessun servizio disponibile. Aggiungi il tuo primo servizio!
