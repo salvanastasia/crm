@@ -8,7 +8,9 @@ import { Capacitor } from "@capacitor/core"
  * Sul server e sul primo paint web resta false, poi si aggiorna lato client.
  */
 export function useIsCapacitorNative(): boolean {
-  const [native, setNative] = useState(false)
+  const [native, setNative] = useState(() =>
+    typeof window !== "undefined" ? Capacitor.isNativePlatform() : false,
+  )
 
   useEffect(() => {
     setNative(Capacitor.isNativePlatform())

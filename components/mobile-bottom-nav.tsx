@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { clientMobileNavItems, isNavItemActive, staffNavItems } from "@/lib/mobile-nav"
 import { useAuth } from "@/components/auth-context"
+import { useIsCapacitorNative } from "@/hooks/use-is-capacitor-native"
 
 export function MobileBottomNav() {
   const pathname = usePathname() ?? ""
   const { user } = useAuth()
+  const isCapacitorNative = useIsCapacitorNative()
 
   const isStaff = user && (user.role === "admin" || user.role === "staff")
   const isClient = user?.role === "client"
@@ -18,7 +20,10 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        isCapacitorNative ? "flex" : "flex md:hidden",
+      )}
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       aria-label="Navigazione principale"
     >

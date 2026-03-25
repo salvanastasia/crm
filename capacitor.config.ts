@@ -9,8 +9,8 @@ const DEFAULT_SERVER_URL = "https://toelettatura.vercel.app"
 const serverUrl = process.env.CAP_SERVER_URL?.replace(/\/$/, "") || DEFAULT_SERVER_URL
 
 const config: CapacitorConfig = {
-  appId: process.env.CAP_APP_ID || "com.barbercrm.app",
-  appName: process.env.CAP_APP_NAME || "Barber CRM",
+  appId: process.env.CAP_APP_ID || "com.grooma.app",
+  appName: process.env.CAP_APP_NAME || "Grooma",
   webDir: "mobile/www",
   server: {
     url: serverUrl,

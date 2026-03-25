@@ -23,17 +23,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const shouldShowHeader = !isAuthPage
 
-  const showMobileBottom =
-    isCapacitorNative &&
+  const navEligible =
     !isLoading &&
     isAuthenticated &&
     !isAuthPage &&
     user != null &&
     (user.role === "admin" || user.role === "staff" || user.role === "client")
 
-  const mainBottomPad = showMobileBottom
-    ? "pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]"
-    : ""
+  /** Padding sotto il main: su Capacitor sempre; sul web solo sotto breakpoint md (la nav usa `flex md:hidden`). */
+  const mainBottomPad = cn(
+    navEligible &&
+      (isCapacitorNative
+        ? "pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]"
+        : "max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]"),
+  )
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -52,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
-      {showMobileBottom && <MobileBottomNav />}
+      {navEligible && <MobileBottomNav />}
     </div>
   )
 }
