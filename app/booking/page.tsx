@@ -18,6 +18,7 @@ import { Steps, Step } from "@/components/ui/steps"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { Service, Resource, BrandSettings } from "@/lib/types"
 import { toast } from "@/components/ui/use-toast"
+import { appointmentCalendarDateKey } from "@/lib/appointment-availability"
 
 export default function BookingPage() {
   const { isAuthenticated, user, refreshProfile } = useAuth()
@@ -113,7 +114,8 @@ export default function BookingPage() {
         clientPhone: user.phone ?? "",
         serviceId: selectedService.id,
         resourceId: selectedResource.id,
-        date: selectedDate,
+        // Server action receives serialized args; sending a date-only key avoids UTC day shifts.
+        date: appointmentCalendarDateKey(selectedDate),
         time: selectedTime,
         paymentMethod: paymentMethod as "card" | "paypal" | "cash" | null,
       })

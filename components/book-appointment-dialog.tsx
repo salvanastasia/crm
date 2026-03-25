@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/components/auth-context"
 import { bookAppointment, getServices, getResources } from "@/lib/actions"
 import type { Service, Resource } from "@/lib/types"
+import { appointmentCalendarDateKey } from "@/lib/appointment-availability"
 
 interface BookAppointmentDialogProps {
   date: Date
@@ -78,7 +79,8 @@ export function BookAppointmentDialog({ date, time, open, onOpenChange }: BookAp
         clientPhone: phone,
         serviceId,
         resourceId,
-        date,
+        // Send date-only key to avoid UTC serialization shifting the day.
+        date: appointmentCalendarDateKey(date),
         time,
       })
       if (!res.success) {
