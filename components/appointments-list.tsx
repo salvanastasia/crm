@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { format, parseISO } from "date-fns"
+import { format } from "date-fns"
 import { it } from "date-fns/locale"
 import { useAuth } from "@/components/auth-context"
 import { getAppointments, getClientAppointments, updateAppointmentDetailsByAdmin, updateAppointmentStatus } from "@/lib/actions"
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { Appointment } from "@/lib/types"
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 import { toast } from "@/components/ui/use-toast"
+import { parseAppointmentDateLocal } from "@/lib/appointment-availability"
 
 type AppointmentsListProps = {
   selectedDate?: Date
@@ -81,7 +82,6 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
   const canManageAppointments = user?.role === "admin" || user?.role === "staff"
 
   const normalizeTime = (time: string) => String(time).slice(0, 5)
-  const toDate = (value: Date | string) => (typeof value === "string" ? parseISO(value) : value)
   const editingAppointment = appointments.find((a) => a.id === editingId) ?? null
 
   const handleStatusChange = async (appointmentId: string, status: "confirmed" | "cancelled") => {
@@ -109,7 +109,7 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
   const openEditDialog = (appointment: Appointment) => {
     if (!canManageAppointments) return
     setEditingId(appointment.id)
-    setEditDate(format(toDate(appointment.date), "yyyy-MM-dd"))
+    setEditDate(format(parseAppointmentDateLocal(appointment.date), "yyyy-MM-dd"))
     setEditTime(normalizeTime(appointment.time))
     setEditStatus(appointment.status)
     setIsEditOpen(true)
@@ -205,9 +205,11 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-16 h-16 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
                     <span className="text-xs font-semibold uppercase leading-none">
-                      {format(toDate(appointment.date), "MMM", { locale: it })}
+                      {format(parseAppointmentDateLocal(appointment.date), "MMM", { locale: it })}
                     </span>
-                    <span className="text-2xl font-bold leading-none mt-1">{format(toDate(appointment.date), "d")}</span>
+                    <span className="text-2xl font-bold leading-none mt-1">
+                      {format(parseAppointmentDateLocal(appointment.date), "d")}
+                    </span>
                   </div>
                   <div className="min-w-0">
                     <div className="font-medium truncate">{appointment.clientName}</div>
@@ -266,10 +268,10 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-14 h-14 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
                     <span className="text-xs font-semibold uppercase leading-none">
-                      {format(toDate(editingAppointment.date), "MMM", { locale: it })}
+                      {format(parseAppointmentDateLocal(editingAppointment.date), "MMM", { locale: it })}
                     </span>
                     <span className="text-xl font-bold leading-none mt-1">
-                      {format(toDate(editingAppointment.date), "d")}
+                      {format(parseAppointmentDateLocal(editingAppointment.date), "d")}
                     </span>
                   </div>
                   <div className="min-w-0">

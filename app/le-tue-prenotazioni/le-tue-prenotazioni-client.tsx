@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { format, parseISO } from "date-fns"
+import { format } from "date-fns"
 import { it } from "date-fns/locale"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { getClientAppointments } from "@/lib/actions"
 import type { Appointment } from "@/lib/types"
 import { toast } from "@/components/ui/use-toast"
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
+import { parseAppointmentDateLocal } from "@/lib/appointment-availability"
 
 export function LeTuePrenotazioniClient() {
   const router = useRouter()
@@ -119,7 +120,8 @@ export function LeTuePrenotazioniClient() {
           ) : (
             <div className="space-y-4">
               {sortedAppointments.map((appointment) => {
-                const date = typeof appointment.date === "string" ? parseISO(appointment.date) : appointment.date
+                const date =
+                  typeof appointment.date === "string" ? parseAppointmentDateLocal(appointment.date) : appointment.date
                 return (
                   <div key={appointment.id} className="flex items-center justify-between gap-4 border-b pb-4 last:border-0">
                     <div className="flex items-center gap-3 min-w-0">

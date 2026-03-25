@@ -12,6 +12,22 @@ export function appointmentCalendarDateKey(input: Date | string): string {
   return format(input, "yyyy-MM-dd")
 }
 
+/**
+ * Parse a "date-only" string (yyyy-MM-dd) as a local date (midnight local),
+ * avoiding the UTC interpretation that causes -1 day shifts.
+ */
+export function parseAppointmentDateLocal(input: Date | string): Date {
+  if (input instanceof Date) return input
+  const s = String(input).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split("-").map((x) => Number(x))
+    const dt = new Date(y, (m ?? 1) - 1, d ?? 1)
+    return isValid(dt) ? dt : new Date(NaN)
+  }
+  const dt = new Date(s)
+  return isValid(dt) ? dt : new Date(NaN)
+}
+
 /** "HH:MM" or "HH:MM:SS" -> minutes from midnight */
 export function timeStringToMinutes(t: string): number {
   const s = String(t).trim().slice(0, 8)
