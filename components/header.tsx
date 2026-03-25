@@ -34,6 +34,19 @@ import { parseAppointmentDateLocal } from "@/lib/appointment-availability"
 import { staffNavItems } from "@/lib/mobile-nav"
 import { useIsCapacitorNative } from "@/hooks/use-is-capacitor-native"
 
+/** Sticky sotto la status bar: padding con env() + viewport-fit=cover in layout */
+const headerBarClass =
+  "sticky top-0 z-[100] border-b bg-background supports-[backdrop-filter]:bg-background/90 pt-[env(safe-area-inset-top,0px)]"
+
+const headerPadInline = cn(
+  "mx-auto w-full max-w-full px-4 md:container md:px-4",
+  "max-md:pl-[max(1rem,env(safe-area-inset-left,0px))] max-md:pr-[max(1rem,env(safe-area-inset-right,0px))]",
+)
+
+/** ≥44px come da linee guida tap iOS; min-* vince su size="icon" (36px) del Button */
+const headerHitTarget =
+  "relative inline-flex min-h-[44px] min-w-[44px] shrink-0 touch-manipulation items-center justify-center p-0 [&_svg]:pointer-events-none"
+
 export function Header() {
   const pathname = usePathname()
   const router = useRouter()
@@ -202,9 +215,9 @@ export function Header() {
   /** Client booking: solo logo, tema, utente — niente CRM */
   if (isAuthenticated && isClientBookingFlow) {
     return (
-      <header className="sticky top-0 z-[100] border-b bg-background supports-[backdrop-filter]:bg-background/90">
-        <div className="mx-auto w-full max-w-3xl px-4">
-          <div className="flex h-14 items-center justify-between">
+      <header className={headerBarClass}>
+        <div className={cn(headerPadInline, "max-w-3xl")}>
+          <div className="flex h-14 min-h-14 items-center justify-between">
             <Link href="/booking" className="flex items-center gap-2 min-w-0">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={settings?.logoUrl || "/placeholder.svg?height=32&width=32"} alt="" />
@@ -218,7 +231,7 @@ export function Header() {
               {isAuthenticated && isClient && (
                 <DropdownMenu open={clientNotifOpen} onOpenChange={setClientNotifOpen}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="Notifiche">
+                    <Button variant="ghost" size="icon" className={headerHitTarget} aria-label="Notifiche">
                       <Bell className="h-4 w-4" />
                       {clientNotificationsUnread.length > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background" />
@@ -274,8 +287,8 @@ export function Header() {
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className={cn(headerHitTarget, "rounded-full")}>
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="" />
                       <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
                     </Avatar>
@@ -332,9 +345,9 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-[100] border-b bg-background supports-[backdrop-filter]:bg-background/90">
-      <div className="mx-auto w-full max-w-full px-4 md:container md:px-4">
-        <div className="flex h-16 items-center justify-between">
+    <header className={headerBarClass}>
+      <div className={headerPadInline}>
+        <div className="flex h-16 min-h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href={isStaff ? "/dashboard" : isClient ? "/booking" : "/"} className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
@@ -368,7 +381,7 @@ export function Header() {
             {isAuthenticated && isClient && (
               <DropdownMenu open={clientNotifOpen} onOpenChange={setClientNotifOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="Notifiche">
+                  <Button variant="ghost" size="icon" className={headerHitTarget} aria-label="Notifiche">
                     <Bell className="h-4 w-4" />
                     {clientNotificationsUnread.length > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background" />
@@ -439,7 +452,7 @@ export function Header() {
             {isAuthenticated && isStaff && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="Richieste in attesa">
+                  <Button variant="ghost" size="icon" className={headerHitTarget} aria-label="Richieste in attesa">
                     <Bell className="h-4 w-4" />
                     {pendingApprovalsCount > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background" />
@@ -552,8 +565,8 @@ export function Header() {
             {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
+                  <Button variant="ghost" className={cn(headerHitTarget, "rounded-full")}>
+                    <Avatar className="h-9 w-9">
                       <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="Avatar" />
                       <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
                     </Avatar>
