@@ -1,6 +1,6 @@
-import { FullscreenPreloader } from "@/components/preloader/fullscreen-preloader"
+import { GlobalPreloader } from "@/components/preloader/global-preloader"
 
 export default function Loading() {
-  return <FullscreenPreloader />
+  return <GlobalPreloader />
 }
 
