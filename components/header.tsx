@@ -1,10 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { User, LogOut, Calendar } from "lucide-react"
+import { Bell, Calendar, LogOut, User } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+import { it } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -16,9 +18,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "@/components/mode-toggle"
-import { getBrandSettings } from "@/lib/actions"
+import { autoRejectExpiredPendingAppointments, getBrandSettings, getPendingAppointmentsCount, getPendingAppointmentsForApprovals, updateAppointmentStatus } from "@/lib/actions"
 import { useAuth } from "@/components/auth-context"
-import type { BrandSettings } from "@/lib/types"
+import type { Appointment, BrandSettings } from "@/lib/types"
+import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
+import { parseAppointmentDateLocal } from "@/lib/appointment-availability"
 
 const staffNavItems = [
   { name: "Dashboard", href: "/dashboard" },
@@ -38,6 +42,73 @@ export function Header() {
   const isClient = user?.role === "client"
 
   const isClientBookingFlow = isClient && pathname.startsWith("/booking")
+
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [pendingApprovals, setPendingApprovals] = useState<Appointment[]>([])
+  const [pendingApprovalsLoading, setPendingApprovalsLoading] = useState(false)
+  const [pendingApprovalsUpdatingId, setPendingApprovalsUpdatingId] = useState<string | null>(null)
+  const skipRealtimeUntilRef = useRef<number>(0)
+  const lastAutoRejectAtRef = useRef<number>(0)
+
+  const APPROVALS_LIMIT = 5
+
+  const maybeAutoRejectExpiredPending = useCallback(async () => {
+    if (!isStaff || !user?.barberId) return
+    const now = Date.now()
+    if (now - lastAutoRejectAtRef.current < 60_000) return
+    lastAutoRejectAtRef.current = now
+
+    // Avoid dropdown flicker: realtime may revalidate after bulk update.
+    skipRealtimeUntilRef.current = now + 2000
+    await autoRejectExpiredPendingAppointments(user.barberId)
+  }, [isStaff, user?.barberId])
+
+  const loadPendingApprovalsCount = useCallback(async () => {
+    if (!isStaff || !user?.barberId) {
+      setPendingApprovalsCount(0)
+      return
+    }
+    await maybeAutoRejectExpiredPending()
+    const count = await getPendingAppointmentsCount(user.barberId)
+    setPendingApprovalsCount(count)
+  }, [isStaff, user?.barberId, maybeAutoRejectExpiredPending])
+
+  useEffect(() => {
+    void loadPendingApprovalsCount()
+  }, [loadPendingApprovalsCount])
+
+  const loadPendingApprovals = useCallback(async () => {
+    if (!isStaff || !user?.barberId) {
+      setPendingApprovals([])
+      return
+    }
+    setPendingApprovalsLoading(true)
+    try {
+      await maybeAutoRejectExpiredPending()
+      const rows = await getPendingAppointmentsForApprovals(user.barberId, APPROVALS_LIMIT)
+      setPendingApprovals(rows)
+    } finally {
+      setPendingApprovalsLoading(false)
+    }
+  }, [isStaff, user?.barberId, maybeAutoRejectExpiredPending])
+
+  useEffect(() => {
+    void loadPendingApprovals()
+  }, [loadPendingApprovals])
+
+  useAppointmentsRealtime({
+    enabled: Boolean(isAuthenticated && isStaff && user?.barberId),
+    mode: "barber",
+    barberId: isStaff ? user?.barberId : undefined,
+    onInvalidate: () => {
+      // Avoid dropdown flicker: after a manual approve/reject we already update the UI optimistically.
+      // We'll let realtime refetch after a short grace period.
+      if (Date.now() < skipRealtimeUntilRef.current) return
+      void loadPendingApprovalsCount()
+      void loadPendingApprovals()
+    },
+    channelScope: "pending-approvals",
+  })
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -82,7 +153,6 @@ export function Header() {
               <span className="font-semibold truncate">{brandLabel}</span>
             </Link>
             <div className="flex items-center gap-2 shrink-0">
-              <ModeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -99,6 +169,11 @@ export function Header() {
                       <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Tema</span>
+                    <ModeToggle className="h-8 w-8" />
+                  </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/booking" className="flex items-center">
@@ -166,7 +241,113 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
-            <ModeToggle />
+            {isAuthenticated && isStaff && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="Richieste in attesa">
+                    <Bell className="h-4 w-4" />
+                    {pendingApprovalsCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[420px]" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <span>Richieste in attesa</span>
+                      {pendingApprovalsCount > 0 ? (
+                        <span className="text-xs text-muted-foreground">{pendingApprovalsCount}</span>
+                      ) : null}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+
+                  {pendingApprovalsLoading ? (
+                    <div className="p-3 text-sm text-muted-foreground">Caricamento...</div>
+                  ) : pendingApprovals.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">Nessuna richiesta pending</div>
+                  ) : (
+                    <div className="space-y-2 p-2">
+                      {pendingApprovals.map((a) => (
+                        <div key={a.id} className="rounded-md border p-2 space-y-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{a.clientName}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {a.serviceName || "Servizio"} • {a.resourceName || "Staff"}
+                              </p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-xs font-medium">
+                                {format(parseAppointmentDateLocal(a.date), "d MMM", { locale: it })}
+                              </p>
+                              <p className="text-xs text-muted-foreground">{String(a.time).slice(0, 5)}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 h-auto py-1 bg-rose-200 text-rose-950 border-rose-500 hover:bg-rose-700 hover:text-white dark:bg-rose-800 dark:text-rose-50 dark:border-rose-400 dark:hover:bg-rose-700"
+                              disabled={pendingApprovalsUpdatingId === a.id}
+                              onClick={async (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (!user?.barberId) return
+                                setPendingApprovalsUpdatingId(a.id)
+                                try {
+                                  const ok = await updateAppointmentStatus(a.id, "cancelled", user.barberId)
+                                  if (ok) {
+                                    // Optimistic update: keep the dropdown stable (no list refresh).
+                                    setPendingApprovals((prev) => prev.filter((x) => x.id !== a.id))
+                                    setPendingApprovalsCount((prev) => Math.max(0, prev - 1))
+                                    skipRealtimeUntilRef.current = Date.now() + 1800
+                                  }
+                                } finally {
+                                  setPendingApprovalsUpdatingId(null)
+                                }
+                              }}
+                            >
+                              Rifiuta
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="flex-1 h-auto py-1"
+                              disabled={pendingApprovalsUpdatingId === a.id}
+                              onClick={async (e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                if (!user?.barberId) return
+                                setPendingApprovalsUpdatingId(a.id)
+                                try {
+                                  const ok = await updateAppointmentStatus(a.id, "confirmed", user.barberId)
+                                  if (ok) {
+                                    // Optimistic update: keep the dropdown stable (no list refresh).
+                                    setPendingApprovals((prev) => prev.filter((x) => x.id !== a.id))
+                                    setPendingApprovalsCount((prev) => Math.max(0, prev - 1))
+                                    skipRealtimeUntilRef.current = Date.now() + 1800
+                                  }
+                                } finally {
+                                  setPendingApprovalsUpdatingId(null)
+                                }
+                              }}
+                            >
+                              Conferma
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard">Vai al dashboard</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
             {isAuthenticated ? (
               <DropdownMenu>
@@ -185,6 +366,11 @@ export function Header() {
                       <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Tema</span>
+                    <ModeToggle className="h-8 w-8" />
+                  </div>
                   <DropdownMenuSeparator />
                   {isClient && (
                     <>

@@ -1784,3 +1784,72 @@ export async function getRecentAppointmentsForDashboard(
 
   return { appointmentsCount, recent }
 }
+
+export async function getPendingAppointmentsCount(barberId: string): Promise<number> {
+  const supabase = await db()
+  if (!supabase || !barberId) return 0
+
+  const todayKey = appointmentCalendarDateKey(new Date())
+  const { count, error } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("barber_id", barberId)
+    .eq("status", "pending")
+    .gte("date", todayKey)
+
+  if (error) {
+    console.error("getPendingAppointmentsCount:", error)
+    return 0
+  }
+
+  return count ?? 0
+}
+
+export async function getPendingAppointmentsForApprovals(barberId: string, limit = 5): Promise<Appointment[]> {
+  const supabase = await db()
+  if (!supabase || !barberId) return []
+
+  const todayKey = appointmentCalendarDateKey(new Date())
+  const { data: rows, error } = await supabase
+    .from("appointments")
+    .select("id, client_id, service_id, resource_id, barber_id, date, time, status, payment_method, payment_status")
+    .eq("barber_id", barberId)
+    .eq("status", "pending")
+    .gte("date", todayKey)
+    .order("date", { ascending: true })
+    .order("time", { ascending: true })
+    .limit(limit)
+
+  if (error || !rows) {
+    console.error("getPendingAppointmentsForApprovals:", error)
+    return []
+  }
+
+  return enrichAppointments(supabase, rows as any)
+}
+
+/**
+ * Auto-rifiuta tutte le richieste "pending" con data più vecchia di oggi.
+ * La logica usa il campo `appointments.date` (non `created_at`).
+ */
+export async function autoRejectExpiredPendingAppointments(barberId: string): Promise<number> {
+  const supabase = await db()
+  if (!supabase || !barberId) return 0
+
+  const todayKey = appointmentCalendarDateKey(new Date())
+
+  const { data, error } = await supabase
+    .from("appointments")
+    .update({ status: "cancelled", payment_status: "pending" })
+    .eq("barber_id", barberId)
+    .eq("status", "pending")
+    .lt("date", todayKey)
+    .select("id")
+
+  if (error) {
+    console.error("autoRejectExpiredPendingAppointments:", error)
+    return 0
+  }
+
+  return (data ?? []).length
+}
