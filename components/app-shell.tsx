@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
-    void StatusBar.setOverlaysWebView({ overlay: false })
+    void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {})
   }, [])
 
   useEffect(() => {
