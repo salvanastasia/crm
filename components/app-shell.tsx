@@ -3,6 +3,8 @@
 import type React from "react"
 import { useEffect } from "react"
 import { usePathname } from "next/navigation"
+import { Capacitor } from "@capacitor/core"
+import { StatusBar } from "@capacitor/status-bar"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
 import { useAuth } from "@/components/auth-context"
@@ -29,6 +31,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hideClientHeaderOnCompact =
     user?.role === "client" && (isMobileViewport || isCapacitorNative)
 
+  const showHeader = shouldShowHeader && !hideClientHeaderOnCompact
+
   const navEligible =
     !isLoading &&
     isAuthenticated &&
@@ -38,6 +42,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   /** Scroll solo nel main: evita rubber-band su body che “allunga” header/nav (iOS / Capacitor) */
   const dockedChrome = Boolean(navEligible && (isCapacitorNative || isMobileViewport))
+
+  /** Senza header serve padding top (notch/status bar): su Capacitor sempre; su web mobile solo cliente docked. */
+  const mainNeedsTopSafeArea =
+    !showHeader && (isCapacitorNative || (dockedChrome && hideClientHeaderOnCompact))
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return
+    void StatusBar.setOverlaysWebView({ overlay: false })
+  }, [])
 
   useEffect(() => {
     if (!dockedChrome) return
@@ -70,12 +83,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
     >
       {isCapacitorNative && <CapacitorDeepLinkBridge />}
-      {shouldShowHeader && !hideClientHeaderOnCompact && <Header dockedChrome={dockedChrome} />}
+      {showHeader && <Header dockedChrome={dockedChrome} />}
       <main
         className={cn(
           "min-w-0",
           dockedChrome ? "min-h-0 flex-1 overflow-y-auto overscroll-y-contain" : "flex-1",
-          dockedChrome && hideClientHeaderOnCompact && "pt-[env(safe-area-inset-top,0px)]",
+          mainNeedsTopSafeArea && "pt-[max(0px,env(safe-area-inset-top,0px))]",
           mainBottomPad,
           isAuthPage
             ? "w-full p-0"
