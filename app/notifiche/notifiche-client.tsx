@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import { it } from "date-fns/locale"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/components/auth-context"
@@ -55,56 +54,53 @@ export function NotificheClient() {
   if (!user) return null
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+    <div className="w-full space-y-6">
+      <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold">Notifiche</h1>
           <p className="text-sm text-muted-foreground">
             {user.role === "client" ? "Aggiornamenti sulle tue prenotazioni." : "Aggiornamenti e richieste del salone."}
           </p>
         </div>
-        <Button variant="outline" onClick={markAllRead} disabled={marking || unreadIds.length === 0}>
+        <Button
+          variant="outline"
+          className="w-full shrink-0 sm:w-auto"
+          onClick={markAllRead}
+          disabled={marking || unreadIds.length === 0}
+        >
           Segna tutte come lette
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Storico</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-sm text-muted-foreground">Caricamento…</div>
-          ) : rows.length === 0 ? (
-            <div className="text-sm text-muted-foreground">Nessuna notifica.</div>
-          ) : (
-            <div className="space-y-3">
-              {rows.map((n) => {
-                const created = new Date(n.createdAt)
-                const ago = formatDistanceToNow(created, { addSuffix: true, locale: it })
-                return (
-                  <div key={n.id} className="rounded-md border p-3 flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium truncate">{n.title}</p>
-                        {!n.readAt ? (
-                          <span className="h-2 w-2 rounded-full bg-destructive shrink-0" aria-label="Non letta" />
-                        ) : null}
-                      </div>
-                      {n.body ? <p className="text-sm text-muted-foreground mt-1">{n.body}</p> : null}
-                      <p className="text-xs text-muted-foreground mt-2">{ago}</p>
-                    </div>
-                    <Badge variant="outline" className="shrink-0">
-                      {n.audience === "barber_staff" ? "Staff" : "Tu"}
-                    </Badge>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Caricamento…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nessuna notifica.</p>
+      ) : (
+        <ul className="w-full divide-y divide-border">
+          {rows.map((n) => {
+            const created = new Date(n.createdAt)
+            const ago = formatDistanceToNow(created, { addSuffix: true, locale: it })
+            return (
+              <li key={n.id} className="flex items-start justify-between gap-4 py-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium truncate">{n.title}</p>
+                    {!n.readAt ? (
+                      <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" aria-label="Non letta" />
+                    ) : null}
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  {n.body ? <p className="mt-1 text-sm text-muted-foreground">{n.body}</p> : null}
+                  <p className="mt-2 text-xs text-muted-foreground">{ago}</p>
+                </div>
+                <Badge variant="outline" className="shrink-0">
+                  {n.audience === "barber_staff" ? "Staff" : "Tu"}
+                </Badge>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }
-
