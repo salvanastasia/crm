@@ -35,7 +35,7 @@ export default function SettingsPage() {
               <CardDescription>Tema e uscita dall&apos;app</CardDescription>
             </CardHeader>
             <CardContent className="space-6">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 pb-2">
                 <span className="text-sm text-muted-foreground">Tema</span>
                 <ModeToggle className="h-9 w-9 shrink-0" />
               </div>
