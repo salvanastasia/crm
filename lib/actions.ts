@@ -1373,6 +1373,8 @@ async function enrichAppointments(
     status: string
     payment_method: string | null
     payment_status: string | null
+    created_at?: string
+    updated_at?: string
   }>,
 ): Promise<Appointment[]> {
   const clientIds = [...new Set(rows.map((r) => r.client_id))]
@@ -1409,6 +1411,8 @@ async function enrichAppointments(
     status: r.status as Appointment["status"],
     paymentMethod: r.payment_method as Appointment["paymentMethod"],
     paymentStatus: r.payment_status as Appointment["paymentStatus"],
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
   }))
 }
 
@@ -1438,6 +1442,31 @@ export async function getClientAppointments(clientId: string): Promise<Appointme
     .order("date", { ascending: true })
   if (error || !rows || rows.length === 0) return []
   return enrichAppointments(supabase, rows)
+}
+
+export async function getClientStatusChangeAppointments(
+  clientId: string,
+  limit = 5,
+): Promise<Appointment[]> {
+  const supabase = await db()
+  if (!supabase || !clientId) return []
+
+  const { data: rows, error } = await supabase
+    .from("appointments")
+    .select(
+      "id, client_id, service_id, resource_id, barber_id, date, time, status, payment_method, payment_status, updated_at",
+    )
+    .eq("client_id", clientId)
+    .in("status", ["confirmed", "cancelled"])
+    .order("updated_at", { ascending: false })
+    .limit(limit)
+
+  if (error || !rows) {
+    console.error("getClientStatusChangeAppointments:", error)
+    return []
+  }
+
+  return enrichAppointments(supabase, rows as any)
 }
 
 export async function updateAppointmentStatus(

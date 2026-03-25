@@ -9,6 +9,7 @@ import { format } from "date-fns"
 import { it } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ModeToggle } from "@/components/mode-toggle"
-import { autoRejectExpiredPendingAppointments, getBrandSettings, getPendingAppointmentsCount, getPendingAppointmentsForApprovals, updateAppointmentStatus } from "@/lib/actions"
+import {
+  autoRejectExpiredPendingAppointments,
+  getClientStatusChangeAppointments,
+  getBrandSettings,
+  getPendingAppointmentsCount,
+  getPendingAppointmentsForApprovals,
+  updateAppointmentStatus,
+} from "@/lib/actions"
 import { useAuth } from "@/components/auth-context"
 import type { Appointment, BrandSettings } from "@/lib/types"
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
@@ -51,6 +59,25 @@ export function Header() {
   const lastAutoRejectAtRef = useRef<number>(0)
 
   const APPROVALS_LIMIT = 5
+
+  const [clientNotifOpen, setClientNotifOpen] = useState(false)
+  const [clientNotifications, setClientNotifications] = useState<Appointment[]>([])
+  const [clientNotificationsLoading, setClientNotificationsLoading] = useState(false)
+  const [clientNotifSeenAt, setClientNotifSeenAt] = useState<number>(0)
+  const skipClientRealtimeUntilRef = useRef<number>(0)
+  const prevClientNotifOpenRef = useRef<boolean>(false)
+  const CLIENT_NOTIF_SEEN_AT_KEY = user?.id ? `client:notif-seen-at:${user.id}` : null
+
+  const loadClientNotifications = useCallback(async () => {
+    if (!isClient || !user?.id) return
+    setClientNotificationsLoading(true)
+    try {
+      const rows = await getClientStatusChangeAppointments(user.id, 5)
+      setClientNotifications(rows)
+    } finally {
+      setClientNotificationsLoading(false)
+    }
+  }, [isClient, user?.id])
 
   const maybeAutoRejectExpiredPending = useCallback(async () => {
     if (!isStaff || !user?.barberId) return
@@ -111,6 +138,46 @@ export function Header() {
   })
 
   useEffect(() => {
+    if (!isClient || !user?.id || !CLIENT_NOTIF_SEEN_AT_KEY) return
+    const raw = window.localStorage.getItem(CLIENT_NOTIF_SEEN_AT_KEY)
+    const parsed = raw ? Number(raw) : 0
+    setClientNotifSeenAt(Number.isFinite(parsed) ? parsed : 0)
+  }, [isClient, user?.id, CLIENT_NOTIF_SEEN_AT_KEY])
+
+  useEffect(() => {
+    if (!isClient) return
+    void loadClientNotifications()
+  }, [isClient, loadClientNotifications])
+
+  useAppointmentsRealtime({
+    enabled: Boolean(isAuthenticated && isClient && user?.id),
+    mode: "client",
+    clientId: user?.id,
+    onInvalidate: () => {
+      if (Date.now() < skipClientRealtimeUntilRef.current) return
+      void loadClientNotifications()
+    },
+    channelScope: "client-status-notifications",
+  })
+
+  useEffect(() => {
+    if (!CLIENT_NOTIF_SEEN_AT_KEY) return
+    // Mark as read when user closes the dropdown (so the list is visible while open).
+    if (prevClientNotifOpenRef.current && !clientNotifOpen) {
+      const now = Date.now()
+      window.localStorage.setItem(CLIENT_NOTIF_SEEN_AT_KEY, String(now))
+      setClientNotifSeenAt(now)
+      skipClientRealtimeUntilRef.current = now + 2000
+    }
+    prevClientNotifOpenRef.current = clientNotifOpen
+  }, [clientNotifOpen, CLIENT_NOTIF_SEEN_AT_KEY])
+
+  const clientNotificationsUnread = clientNotifications.filter((a) => {
+    const updatedMs = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
+    return a.status !== "pending" && updatedMs > clientNotifSeenAt
+  })
+
+  useEffect(() => {
     const loadSettings = async () => {
       const barberId = user?.barberId
       const data = barberId ? await getBrandSettings(barberId) : null
@@ -153,6 +220,58 @@ export function Header() {
               <span className="font-semibold truncate">{brandLabel}</span>
             </Link>
             <div className="flex items-center gap-2 shrink-0">
+              {isAuthenticated && isClient && (
+                <DropdownMenu open={clientNotifOpen} onOpenChange={setClientNotifOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="Notifiche">
+                      <Bell className="h-4 w-4" />
+                      {clientNotificationsUnread.length > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[420px]" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex items-center justify-between gap-2 w-full">
+                        <span>Notifiche prenotazioni</span>
+                        {clientNotificationsUnread.length > 0 ? (
+                          <span className="text-xs text-muted-foreground">{clientNotificationsUnread.length}</span>
+                        ) : null}
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {clientNotificationsUnread.length === 0 ? (
+                      <div className="p-3 text-sm text-muted-foreground">Nessun aggiornamento nuovo</div>
+                    ) : (
+                      <div className="space-y-2 p-2">
+                        {clientNotificationsUnread.slice(0, 5).map((a) => {
+                          const date = typeof a.date === "string" ? parseAppointmentDateLocal(a.date) : a.date
+                          const statusText = a.status === "confirmed" ? "Confermato" : a.status === "cancelled" ? "Rifiutato" : a.status
+                          return (
+                            <div key={a.id} className="rounded-md border p-2 space-y-2">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{a.serviceName || "Servizio"}</p>
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {a.resourceName || "Staff"} • {String(a.time).slice(0, 5)}
+                                  </p>
+                                </div>
+                                <Badge variant="outline" className={a.status === "confirmed" ? "bg-emerald-100 text-emerald-900 border-emerald-200" : "bg-rose-200 text-rose-800 border-rose-300"}>
+                                  {statusText}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Aggiornato il{" "}
+                                {a.updatedAt ? format(new Date(a.updatedAt), "d MMM yyyy") : format(date, "d MMM yyyy")}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -241,6 +360,68 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
+            {isAuthenticated && isClient && (
+              <DropdownMenu open={clientNotifOpen} onOpenChange={setClientNotifOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="relative h-8 w-8" aria-label="Notifiche">
+                    <Bell className="h-4 w-4" />
+                    {clientNotificationsUnread.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background" />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[420px]" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex items-center justify-between gap-2 w-full">
+                      <span>Notifiche prenotazioni</span>
+                      {clientNotificationsUnread.length > 0 ? (
+                        <span className="text-xs text-muted-foreground">{clientNotificationsUnread.length}</span>
+                      ) : null}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {clientNotificationsLoading ? (
+                    <div className="p-3 text-sm text-muted-foreground">Caricamento...</div>
+                  ) : clientNotificationsUnread.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">Nessun aggiornamento nuovo</div>
+                  ) : (
+                    <div className="space-y-2 p-2">
+                      {clientNotificationsUnread.slice(0, 5).map((a) => {
+                        const statusText = a.status === "confirmed" ? "Confermato" : a.status === "cancelled" ? "Rifiutato" : a.status
+                        const date =
+                          typeof a.date === "string" ? parseAppointmentDateLocal(a.date) : a.date
+                        return (
+                          <div key={a.id} className="rounded-md border p-2 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{a.serviceName || "Servizio"}</p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {a.resourceName || "Staff"} • {String(a.time).slice(0, 5)}
+                                </p>
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className={
+                                  a.status === "confirmed"
+                                    ? "bg-emerald-100 text-emerald-900 border-emerald-200"
+                                    : "bg-rose-200 text-rose-800 border-rose-300"
+                                }
+                              >
+                                {statusText}
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Aggiornato il{" "}
+                              {a.updatedAt ? format(new Date(a.updatedAt), "d MMM yyyy") : format(date, "d MMM yyyy")}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             {isAuthenticated && isStaff && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -47,6 +47,8 @@ export interface Appointment {
   status: "pending" | "confirmed" | "completed" | "cancelled"
   paymentMethod?: "card" | "paypal" | "cash" | null
   paymentStatus?: "pending" | "paid" | "refunded" | null
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Barber {

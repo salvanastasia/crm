@@ -65,13 +65,25 @@ export function LeTuePrenotazioniClient() {
     router.replace("/le-tue-prenotazioni")
   }, [searchParams, router])
 
-  const sortedAppointments = useMemo(() => {
-    return [...appointments].sort((a, b) => {
-      const aDate = typeof a.date === "string" ? a.date : format(a.date, "yyyy-MM-dd")
-      const bDate = typeof b.date === "string" ? b.date : format(b.date, "yyyy-MM-dd")
-      if (aDate === bDate) return a.time.localeCompare(b.time)
-      return aDate.localeCompare(bDate)
-    })
+  const toAppointmentDateTimeLocal = (a: Appointment): Date => {
+    const d = typeof a.date === "string" ? parseAppointmentDateLocal(a.date) : a.date
+    const [hh, mm] = String(a.time).slice(0, 5).split(":")
+    const hours = Number(hh) || 0
+    const minutes = Number(mm) || 0
+    const dt = new Date(d)
+    dt.setHours(hours, minutes, 0, 0)
+    return dt
+  }
+
+  const { upcomingAppointments, pastAppointments } = useMemo(() => {
+    const now = new Date()
+    const upcoming = appointments
+      .filter((a) => toAppointmentDateTimeLocal(a).getTime() > now.getTime())
+      .sort((a, b) => toAppointmentDateTimeLocal(a).getTime() - toAppointmentDateTimeLocal(b).getTime())
+    const past = appointments
+      .filter((a) => !upcoming.some((u) => u.id === a.id))
+      .sort((a, b) => toAppointmentDateTimeLocal(b).getTime() - toAppointmentDateTimeLocal(a).getTime())
+    return { upcomingAppointments: upcoming, pastAppointments: past }
   }, [appointments])
 
   const statusLabel = (status: Appointment["status"]) => {
@@ -110,16 +122,55 @@ export function LeTuePrenotazioniClient() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Prenotazioni Effettuate</CardTitle>
+          <CardTitle>Prossime</CardTitle>
         </CardHeader>
         <CardContent>
           {loadingAppointments ? (
             <p className="text-muted-foreground">Caricamento...</p>
-          ) : sortedAppointments.length === 0 ? (
-            <p className="text-muted-foreground">Non hai ancora prenotazioni.</p>
+          ) : upcomingAppointments.length === 0 ? (
+            <p className="text-muted-foreground">Nessuna prenotazione imminente.</p>
           ) : (
             <div className="space-y-4">
-              {sortedAppointments.map((appointment) => {
+              {upcomingAppointments.map((appointment) => {
+                const date =
+                  typeof appointment.date === "string" ? parseAppointmentDateLocal(appointment.date) : appointment.date
+                return (
+                  <div key={appointment.id} className="flex items-center justify-between gap-4 border-b pb-4 last:border-0">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-16 h-16 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
+                        <span className="text-xs font-semibold uppercase leading-none">{format(date, "MMM", { locale: it })}</span>
+                        <span className="text-2xl font-bold leading-none mt-1">{format(date, "d")}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">{appointment.serviceName || "Servizio"}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {appointment.resourceName || "Staff"} - {String(appointment.time).slice(0, 5)}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className={statusClassName(appointment.status)}>
+                      {statusLabel(appointment.status)}
+                    </Badge>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Effettuate</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loadingAppointments ? (
+            <p className="text-muted-foreground">Caricamento...</p>
+          ) : pastAppointments.length === 0 ? (
+            <p className="text-muted-foreground">Nessuna prenotazione passata.</p>
+          ) : (
+            <div className="space-y-4">
+              {pastAppointments.map((appointment) => {
                 const date =
                   typeof appointment.date === "string" ? parseAppointmentDateLocal(appointment.date) : appointment.date
                 return (
