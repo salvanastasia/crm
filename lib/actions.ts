@@ -185,6 +185,8 @@ export async function ensureOwnerResource(barberId: string): Promise<Resource | 
   } = await supabase.auth.getUser()
   if (!user?.id) return null
 
+  const avatarUrl = (user.user_metadata as any)?.avatar_url as string | undefined
+
   // Gate: only allow admins of this barber to self-provision a resource row.
   const { data: profile, error: profileErr } = await supabase
     .from("profiles")
@@ -203,7 +205,31 @@ export async function ensureOwnerResource(barberId: string): Promise<Resource | 
     .maybeSingle()
 
   if (existingErr) return null
-  if (existing) return mapResourceRow(supabase, existing)
+  if (existing) {
+    // Keep service associations intact: only update the "identity" fields (incl. avatar).
+    const existingImageUrl = (existing as any).image_url as string | null | undefined
+    const newImageUrl = avatarUrl ?? null
+
+    const shouldUpdate =
+      existingImageUrl !== newImageUrl ||
+      (profile.name && (existing as any).name !== profile.name) ||
+      ((profile.email ?? null) && (existing as any).email !== (profile.email ?? null))
+
+    if (shouldUpdate) {
+      const { error: updateErr } = await supabase.from("resources").update({
+        name: profile.name ?? (existing as any).name,
+        email: profile.email ?? (existing as any).email,
+        phone: profile.phone ?? (existing as any).phone,
+        image_url: newImageUrl,
+        role: "Admin",
+        is_active: true,
+        barber_id: barberId,
+      }).eq("id", user.id)
+      if (updateErr) return mapResourceRow(supabase, existing)
+    }
+
+    return mapResourceRow(supabase, existing)
+  }
 
   const { data: inserted, error: insertErr } = await supabase
     .from("resources")
@@ -214,7 +240,7 @@ export async function ensureOwnerResource(barberId: string): Promise<Resource | 
       phone: profile.phone ?? null,
       role: "Admin",
       bio: null,
-      image_url: null,
+      image_url: avatarUrl ?? null,
       is_active: true,
       barber_id: barberId,
     })
