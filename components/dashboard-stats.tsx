@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar, Scissors, Users, Activity } from "lucide-react"
 import { useAuth } from "@/components/auth-context"
 import { getDashboardStats } from "@/lib/actions"
+import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 
 type DashboardStatsResponse = {
   incassoTotal: number
@@ -33,28 +34,33 @@ export function DashboardStats({ startDateKey, endDateKey }: { startDateKey: str
     return `${sign}${pct.toFixed(1)}%`
   }
 
-  useEffect(() => {
+  const loadStats = useCallback(async () => {
     if (!user?.barberId) return
-
-    let cancelled = false
-    const load = async () => {
-      setLoading(true)
-      try {
-        const res = await getDashboardStats(user.barberId, startDateKey, endDateKey)
-        if (!cancelled) setData(res)
-      } catch (err) {
-        console.error("DashboardStats:", err)
-        if (!cancelled) setData(null)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
+    setLoading(true)
+    try {
+      const res = await getDashboardStats(user.barberId, startDateKey, endDateKey)
+      setData(res)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("DashboardStats:", err)
+      setData(null)
+    } finally {
+      setLoading(false)
     }
   }, [user?.barberId, startDateKey, endDateKey])
+
+  useEffect(() => {
+    void loadStats()
+  }, [loadStats])
+
+  // Auto-refresh on appointment INSERT/UPDATE/DELETE (status changes included).
+  useAppointmentsRealtime({
+    enabled: Boolean(user?.barberId),
+    mode: "barber",
+    barberId: user?.barberId,
+    onInvalidate: () => void loadStats(),
+    channelScope: "dashboard-stats",
+  })
 
   const stats = data
     ? [

@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTheme } from "next-themes"
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts"
 import { useAuth } from "@/components/auth-context"
 import { getRevenueChartSeries } from "@/lib/actions"
+import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
 
 export function RevenueChart() {
   const { resolvedTheme } = useTheme()
@@ -22,25 +23,29 @@ export function RevenueChart() {
   )
   const [data, setData] = useState<Array<{ name: string; total: number }>>(defaultData)
 
-  useEffect(() => {
+  const loadSeries = useCallback(async () => {
     if (!user?.barberId) return
-
-    let cancelled = false
-    const load = async () => {
-      try {
-        const series = await getRevenueChartSeries(user.barberId, year)
-        if (!cancelled) setData(series)
-      } catch (err) {
-        console.error("RevenueChart:", err)
-        if (!cancelled) setData([])
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
+    try {
+      const series = await getRevenueChartSeries(user.barberId, year)
+      setData(series)
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("RevenueChart:", err)
+      setData([])
     }
   }, [user?.barberId, year])
+
+  useEffect(() => {
+    void loadSeries()
+  }, [loadSeries])
+
+  useAppointmentsRealtime({
+    enabled: Boolean(user?.barberId),
+    mode: "barber",
+    barberId: user?.barberId,
+    onInvalidate: () => void loadSeries(),
+    channelScope: "dashboard-revenue",
+  })
 
   return (
     <div className="h-[300px] w-full">
