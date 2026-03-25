@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/components/auth-context"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Eye, EyeOff } from "lucide-react"
 
 const MIN_PASSWORD_LEN = 6
 
@@ -18,6 +19,8 @@ export function SignupForm({ className }: { className?: string }) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -101,27 +104,49 @@ export function SignupForm({ className }: { className?: string }) {
         </div>
         <div className="grid gap-3">
           <Label htmlFor="signup-password">Password</Label>
-          <Input
-            id="signup-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="new-password"
-            minLength={MIN_PASSWORD_LEN}
-          />
+          <div className="relative">
+            <Input
+              id="signup-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD_LEN}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              aria-label={showPassword ? "Nascondi password" : "Mostra password"}
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
         <div className="grid gap-3">
           <Label htmlFor="signup-confirm">Conferma password</Label>
-          <Input
-            id="signup-confirm"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            autoComplete="new-password"
-            minLength={MIN_PASSWORD_LEN}
-          />
+          <div className="relative">
+            <Input
+              id="signup-confirm"
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={MIN_PASSWORD_LEN}
+              className="pr-10"
+            />
+            <button
+              type="button"
+              aria-label={showConfirmPassword ? "Nascondi password" : "Mostra password"}
+              onClick={() => setShowConfirmPassword((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading ? "Registrazione in corso..." : "Crea account"}
