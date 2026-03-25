@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { clientMobileNavItems, isNavItemActive, staffNavItems } from "@/lib/mobile-nav"
 import { useAuth } from "@/components/auth-context"
 import { useIsCapacitorNative } from "@/hooks/use-is-capacitor-native"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export function MobileBottomNav() {
   const pathname = usePathname() ?? ""
@@ -38,6 +39,8 @@ export function MobileBottomNav() {
         {items.map((item) => {
           const Icon = item.icon
           const active = isNavItemActive(pathname, item.href)
+          const profiloCapacitor =
+            isCapacitorNative && isClient && item.href === "/impostazioni"
           return (
             <Link
               key={item.href}
@@ -47,7 +50,16 @@ export function MobileBottomNav() {
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <Icon className="h-5 w-5 shrink-0" aria-hidden />
+              {profiloCapacitor ? (
+                <Avatar className="h-6 w-6 shrink-0 border border-border" aria-hidden>
+                  <AvatarImage src={user?.avatarUrl || undefined} alt="" className="object-cover" />
+                  <AvatarFallback className="bg-muted text-muted-foreground">
+                    <Icon className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                <Icon className="h-5 w-5 shrink-0" aria-hidden />
+              )}
               <span className="line-clamp-2 w-full break-words hyphens-auto [overflow-wrap:anywhere]">{item.name}</span>
             </Link>
           )

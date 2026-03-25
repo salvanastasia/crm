@@ -285,58 +285,60 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className={cn(headerHitTarget, "rounded-full")}>
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="" />
-                      <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-56 max-w-[min(14rem,calc(100vw-1rem))]"
-                  align="end"
-                  sideOffset={6}
-                  forceMount
-                >
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user?.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+              {!(isCapacitorNative && isClient) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className={cn(headerHitTarget, "rounded-full")}>
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="" />
+                        <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-56 max-w-[min(14rem,calc(100vw-1rem))]"
+                    align="end"
+                    sideOffset={6}
+                    forceMount
+                  >
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user?.name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5 flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Tema</span>
+                      <ModeToggle className="h-8 w-8" />
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-1.5 flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Tema</span>
-                    <ModeToggle className="h-8 w-8" />
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/booking" className="flex items-center">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Prenota
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/le-tue-prenotazioni" className="flex items-center">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Le Tue Prenotazioni
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/impostazioni" className="flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      Profilo
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Esci
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/booking" className="flex items-center">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Prenota
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/le-tue-prenotazioni" className="flex items-center">
+                        <Calendar className="mr-2 h-4 w-4" />
+                        Le Tue Prenotazioni
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/impostazioni" className="flex items-center">
+                        <User className="mr-2 h-4 w-4" />
+                        Profilo
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Esci
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
         </div>
@@ -563,63 +565,65 @@ export function Header() {
             )}
 
             {isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className={cn(headerHitTarget, "rounded-full")}>
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="Avatar" />
-                      <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-56 max-w-[min(14rem,calc(100vw-1rem))]"
-                  align="end"
-                  sideOffset={6}
-                  forceMount
-                >
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user?.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+              !(isClient && isCapacitorNative) ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className={cn(headerHitTarget, "rounded-full")}>
+                      <Avatar className="h-9 w-9">
+                        <AvatarImage src={user?.avatarUrl || "/placeholder.svg?height=32&width=32"} alt="Avatar" />
+                        <AvatarFallback>{user?.name?.substring(0, 2).toUpperCase() || "U"}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-56 max-w-[min(14rem,calc(100vw-1rem))]"
+                    align="end"
+                    sideOffset={6}
+                    forceMount
+                  >
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user?.name}</p>
+                        <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <div className="px-2 py-1.5 flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Tema</span>
+                      <ModeToggle className="h-8 w-8" />
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="px-2 py-1.5 flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Tema</span>
-                    <ModeToggle className="h-8 w-8" />
-                  </div>
-                  <DropdownMenuSeparator />
-                  {isClient && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link href="/booking">Prenota</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/le-tue-prenotazioni">Le Tue Prenotazioni</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/impostazioni">Profilo</Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  {isStaff && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link href="/impostazioni" className="w-full">
-                          Impostazioni
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Esci
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuSeparator />
+                    {isClient && (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <Link href="/booking">Prenota</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/le-tue-prenotazioni">Le Tue Prenotazioni</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/impostazioni">Profilo</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    {isStaff && (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <Link href="/impostazioni" className="w-full">
+                            Impostazioni
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Esci
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null
             ) : (
               <Button variant="default" size="sm" asChild>
                 <Link href="/login">Accedi</Link>
