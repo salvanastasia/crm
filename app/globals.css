@@ -140,5 +140,7 @@ body {
   }
   html {
     @apply font-sans;
+    /* Riduce il salto di larghezza quando menu/dropdown tolgono la scrollbar */
+    scrollbar-gutter: stable;
   }
 }

@@ -44,13 +44,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {shouldShowHeader && <Header />}
       <main
         className={cn(
-          "flex-1",
+          "flex-1 min-w-0",
           mainBottomPad,
           isAuthPage
             ? "w-full p-0"
             : isClientBookingFlow
-              ? "px-4 py-4 md:py-8 w-full flex flex-col items-stretch"
-              : "container mx-auto px-4 py-6",
+              ? "flex w-full flex-col items-stretch px-4 py-4 md:py-8"
+              : "w-full max-w-full px-4 py-6 md:container md:mx-auto",
         )}
       >
         {children}

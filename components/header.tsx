@@ -202,8 +202,8 @@ export function Header() {
   /** Client booking: solo logo, tema, utente — niente CRM */
   if (isAuthenticated && isClientBookingFlow) {
     return (
-      <header className="border-b bg-background">
-        <div className="max-w-3xl mx-auto w-full px-4">
+      <header className="sticky top-0 z-[100] border-b bg-background supports-[backdrop-filter]:bg-background/90">
+        <div className="mx-auto w-full max-w-3xl px-4">
           <div className="flex h-14 items-center justify-between">
             <Link href="/booking" className="flex items-center gap-2 min-w-0">
               <Avatar className="h-8 w-8 shrink-0">
@@ -225,7 +225,12 @@ export function Header() {
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-[420px]" align="end" forceMount>
+                  <DropdownMenuContent
+                    className="w-[min(420px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)]"
+                    align="end"
+                    sideOffset={6}
+                    forceMount
+                  >
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex items-center justify-between gap-2 w-full">
                         <span>Notifiche prenotazioni</span>
@@ -276,7 +281,12 @@ export function Header() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent
+                  className="w-56 max-w-[min(14rem,calc(100vw-1rem))]"
+                  align="end"
+                  sideOffset={6}
+                  forceMount
+                >
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{user?.name}</p>
@@ -322,8 +332,8 @@ export function Header() {
   }
 
   return (
-    <header className="border-b bg-background">
-      <div className="container mx-auto px-4">
+    <header className="sticky top-0 z-[100] border-b bg-background supports-[backdrop-filter]:bg-background/90">
+      <div className="mx-auto w-full max-w-full px-4 md:container md:px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
             <Link href={isStaff ? "/dashboard" : isClient ? "/booking" : "/"} className="flex items-center gap-2">
@@ -365,7 +375,12 @@ export function Header() {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[420px]" align="end" forceMount>
+                <DropdownMenuContent
+                    className="w-[min(420px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)]"
+                    align="end"
+                    sideOffset={6}
+                    forceMount
+                  >
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex items-center justify-between gap-2 w-full">
                       <span>Notifiche prenotazioni</span>
@@ -431,7 +446,12 @@ export function Header() {
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[420px]" align="end" forceMount>
+                <DropdownMenuContent
+                    className="w-[min(420px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)]"
+                    align="end"
+                    sideOffset={6}
+                    forceMount
+                  >
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex items-center justify-between gap-2 w-full">
                       <span>Richieste in attesa</span>
@@ -539,7 +559,12 @@ export function Header() {
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuContent
+                  className="w-56 max-w-[min(14rem,calc(100vw-1rem))]"
+                  align="end"
+                  sideOffset={6}
+                  forceMount
+                >
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{user?.name}</p>

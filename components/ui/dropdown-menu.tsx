@@ -7,9 +7,11 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 function DropdownMenu({
+  modal = false,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
+  /** modal=false evita scroll-lock / padding sul body che restringe il layout (resize al tap su mobile e WebView). */
+  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" modal={modal} {...props} />
 }
 
 function DropdownMenuPortal({

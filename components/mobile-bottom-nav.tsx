@@ -18,16 +18,23 @@ export function MobileBottomNav() {
   const items = isStaff ? staffNavItems : isClient ? clientMobileNavItems : null
   if (!items) return null
 
+  const n = items.length
+
   return (
     <nav
       className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-        isCapacitorNative ? "flex" : "flex md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 box-border w-full border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        isCapacitorNative ? "flex flex-col" : "flex flex-col md:hidden",
       )}
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      style={{ paddingBottom: "max(0px, env(safe-area-inset-bottom))" }}
       aria-label="Navigazione principale"
     >
-      <div className="flex h-14 items-stretch justify-around gap-0.5 px-1">
+      <div
+        className={cn(
+          "grid h-14 min-h-14 w-full min-w-0 shrink-0 items-stretch gap-0 px-0.5",
+          n === 5 ? "grid-cols-5" : "grid-cols-4",
+        )}
+      >
         {items.map((item) => {
           const Icon = item.icon
           const active = isNavItemActive(pathname, item.href)
@@ -36,12 +43,12 @@ export function MobileBottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md px-1 py-1 text-[10px] font-medium leading-none sm:text-xs",
+                "flex min-h-0 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md px-0.5 py-1 text-center text-[10px] font-medium leading-tight text-foreground sm:text-xs",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Icon className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="truncate text-center w-full">{item.name}</span>
+              <span className="line-clamp-2 w-full break-words hyphens-auto [overflow-wrap:anywhere]">{item.name}</span>
             </Link>
           )
         })}
