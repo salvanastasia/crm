@@ -12,6 +12,7 @@ import type {
   NotificationSettings,
   Client,
   Appointment,
+  Notification,
 } from "./types"
 import {
   appointmentCalendarDateKey,
@@ -1477,6 +1478,17 @@ export async function updateAppointmentStatus(
   const supabase = await db()
   if (!supabase || !appointmentId || !barberId) return false
 
+  const { data: before, error: beforeErr } = await supabase
+    .from("appointments")
+    .select("id, client_id, service_id, resource_id, date, time, status")
+    .eq("id", appointmentId)
+    .eq("barber_id", barberId)
+    .maybeSingle()
+
+  if (beforeErr || !before) {
+    console.error("updateAppointmentStatus(load):", beforeErr)
+  }
+
   const { error } = await supabase
     .from("appointments")
     .update({
@@ -1491,6 +1503,124 @@ export async function updateAppointmentStatus(
     return false
   }
 
+  // Best-effort: store notifications.
+  try {
+    if (before?.client_id) {
+      const [{ data: svc }, { data: res }] = await Promise.all([
+        before.service_id
+          ? supabase.from("services").select("name").eq("id", before.service_id).eq("barber_id", barberId).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+        before.resource_id
+          ? supabase.from("resources").select("name").eq("id", before.resource_id).eq("barber_id", barberId).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+      ])
+
+      const serviceName = svc?.name ?? "Servizio"
+      const resourceName = res?.name ?? "Staff"
+      const dateKey = String(before.date)
+      const timeKey = String(before.time).slice(0, 5)
+
+      const clientTitle = status === "confirmed" ? "Prenotazione confermata" : "Prenotazione rifiutata"
+      const clientBody = `${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`
+
+      await supabase.from("notifications").insert([
+        {
+          barber_id: barberId,
+          recipient_user_id: before.client_id,
+          audience: "user",
+          type: "appointment_status",
+          title: clientTitle,
+          body: clientBody,
+          data: {
+            appointmentId,
+            status,
+            serviceName,
+            resourceName,
+            date: dateKey,
+            time: timeKey,
+          },
+        },
+        {
+          barber_id: barberId,
+          recipient_user_id: null,
+          audience: "barber_staff",
+          type: "appointment_status",
+          title: status === "confirmed" ? "Prenotazione approvata" : "Prenotazione rifiutata",
+          body: `${serviceName} • ${dateKey} ${timeKey}`,
+          data: {
+            appointmentId,
+            status,
+            clientId: before.client_id,
+            serviceName,
+            resourceName,
+            date: dateKey,
+            time: timeKey,
+          },
+        },
+      ])
+    }
+  } catch (e) {
+    console.error("updateAppointmentStatus(notifications):", e)
+  }
+
+  return true
+}
+
+export async function getMyNotifications(params?: {
+  limit?: number
+  offset?: number
+}): Promise<Notification[]> {
+  const supabase = await db()
+  if (!supabase) return []
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return []
+
+  const limit = Math.min(100, Math.max(1, params?.limit ?? 30))
+  const offset = Math.max(0, params?.offset ?? 0)
+
+  // Fetch both user and barber_staff (if role allows; RLS will enforce).
+  const { data, error } = await supabase
+    .from("notifications")
+    .select("id, barber_id, recipient_user_id, audience, type, title, body, data, read_at, created_at")
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error || !data) {
+    console.error("getMyNotifications:", error)
+    return []
+  }
+
+  return (data ?? []).map((n: any) => ({
+    id: n.id,
+    barberId: n.barber_id,
+    recipientUserId: n.recipient_user_id,
+    audience: n.audience,
+    type: n.type,
+    title: n.title,
+    body: n.body,
+    data: n.data ?? {},
+    readAt: n.read_at,
+    createdAt: n.created_at,
+  }))
+}
+
+export async function markNotificationsRead(ids: string[]): Promise<boolean> {
+  const supabase = await db()
+  if (!supabase) return false
+  if (!ids || ids.length === 0) return true
+
+  const { error } = await supabase
+    .from("notifications")
+    .update({ read_at: new Date().toISOString() })
+    .in("id", ids)
+
+  if (error) {
+    console.error("markNotificationsRead:", error)
+    return false
+  }
   return true
 }
 

@@ -51,6 +51,21 @@ export interface Appointment {
   updatedAt?: string
 }
 
+export type NotificationAudience = "user" | "barber_staff"
+
+export interface Notification {
+  id: string
+  barberId?: string | null
+  recipientUserId?: string | null
+  audience: NotificationAudience
+  type: string
+  title: string
+  body?: string | null
+  data: Record<string, any>
+  readAt?: string | null
+  createdAt: string
+}
+
 export interface Barber {
   id: string
   name: string

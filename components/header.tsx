@@ -419,6 +419,10 @@ export function Header() {
                       })}
                     </div>
                   )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/notifiche">Vedi tutte</Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -524,7 +528,7 @@ export function Header() {
 
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard">Vai al dashboard</Link>
+                    <Link href="/notifiche">Vedi tutte</Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
