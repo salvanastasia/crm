@@ -175,6 +175,64 @@ export async function getResourceById(id: string): Promise<Resource | null> {
   return mapResourceRow(supabase, resource)
 }
 
+/** Ensures the current admin user exists as a `resources` row (so it can be booked/associated like staff). */
+export async function ensureOwnerResource(barberId: string): Promise<Resource | null> {
+  const supabase = await db()
+  if (!supabase || !barberId) return null
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user?.id) return null
+
+  // Gate: only allow admins of this barber to self-provision a resource row.
+  const { data: profile, error: profileErr } = await supabase
+    .from("profiles")
+    .select("id, name, email, phone, role, barber_id")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (profileErr || !profile) return null
+  if (profile.role !== "admin") return null
+  if (profile.barber_id !== barberId) return null
+
+  const { data: existing, error: existingErr } = await supabase
+    .from("resources")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (existingErr) return null
+  if (existing) return mapResourceRow(supabase, existing)
+
+  const { data: inserted, error: insertErr } = await supabase
+    .from("resources")
+    .insert({
+      id: user.id,
+      name: profile.name ?? "Admin",
+      email: profile.email ?? user.email ?? null,
+      phone: profile.phone ?? null,
+      role: "Admin",
+      bio: null,
+      image_url: null,
+      is_active: true,
+      barber_id: barberId,
+    })
+    .select("*")
+    .single()
+
+  if (insertErr || !inserted) {
+    // If it already exists due to a race, just re-read.
+    if ((insertErr as { code?: string } | null)?.code === "23505") {
+      const { data: reread } = await supabase.from("resources").select("*").eq("id", user.id).maybeSingle()
+      return reread ? mapResourceRow(supabase, reread) : null
+    }
+    return null
+  }
+
+  return mapResourceRow(supabase, inserted)
+}
+
 export async function addResource(resourceData: Omit<Resource, "id">): Promise<Resource | null> {
   const supabase = await db()
   if (!supabase) return null

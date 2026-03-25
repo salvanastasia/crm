@@ -24,7 +24,7 @@ const staffNavItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Clienti", href: "/clienti" },
   { name: "Servizi", href: "/servizi" },
-  { name: "Dipendenti", href: "/risorse" },
+  { name: "Team", href: "/risorse" },
   { name: "Calendario", href: "/calendario" },
 ]
 

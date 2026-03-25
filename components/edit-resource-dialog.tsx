@@ -145,7 +145,7 @@ export function EditResourceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Modifica Dipendente</DialogTitle>
+          <DialogTitle>Modifica Collaboratore</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -153,7 +153,7 @@ export function EditResourceDialog({
               <Label htmlFor="edit-profile-image">Foto profilo (opzionale)</Label>
               <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={imagePreviewUrl || imageUrl || ""} alt="Foto dipendente" />
+                  <AvatarImage src={imagePreviewUrl || imageUrl || ""} alt="Foto collaboratore" />
                   <AvatarFallback>{getInitials(name)}</AvatarFallback>
                 </Avatar>
                 <Input id="edit-profile-image" type="file" accept="image/*" onChange={handleImageChange} />
@@ -173,8 +173,8 @@ export function EditResourceDialog({
                     <SelectValue placeholder="Seleziona un ruolo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Dipendente Senior">Dipendente Senior</SelectItem>
-                    <SelectItem value="Dipendente">Dipendente</SelectItem>
+                    <SelectItem value="Collaboratore Senior">Collaboratore Senior</SelectItem>
+                    <SelectItem value="Collaboratore">Collaboratore</SelectItem>
                     <SelectItem value="Apprendista">Apprendista</SelectItem>
                   </SelectContent>
                 </Select>
@@ -217,7 +217,7 @@ export function EditResourceDialog({
 
             <div className="flex items-center space-x-2">
               <Switch id="edit-active" checked={isActive} onCheckedChange={setIsActive} />
-              <Label htmlFor="edit-active">Dipendente attivo</Label>
+              <Label htmlFor="edit-active">Collaboratore attivo</Label>
             </div>
           </div>
           <DialogFooter>

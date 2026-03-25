@@ -19,12 +19,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { EditResourceDialog } from "@/components/edit-resource-dialog"
 import { useAuth } from "@/components/auth-context"
-import { getResources, deleteResource, getServices } from "@/lib/actions"
+import { ensureOwnerResource, getResources, deleteResource, getServices } from "@/lib/actions"
 import type { Resource, Service } from "@/lib/types"
 
 export function ResourceList() {
   const { user } = useAuth()
   const barberId = user?.barberId
+  const [didEnsureOwner, setDidEnsureOwner] = useState(false)
   const [resources, setResources] = useState<Resource[]>([])
   const [filteredResources, setFilteredResources] = useState<Resource[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -42,6 +43,11 @@ export function ResourceList() {
       return
     }
     const loadData = async () => {
+      // Ensure the logged-in admin appears in the Team list as a resource.
+      if (user?.role === "admin" && !didEnsureOwner) {
+        await ensureOwnerResource(barberId)
+        setDidEnsureOwner(true)
+      }
       const resourcesData = await getResources(barberId)
       const servicesData = await getServices(barberId)
       setResources(resourcesData)
@@ -50,7 +56,7 @@ export function ResourceList() {
     }
 
     void loadData()
-  }, [barberId])
+  }, [barberId, didEnsureOwner, user?.role])
 
   useEffect(() => {
     if (searchQuery.trim() === "") {
@@ -111,7 +117,7 @@ export function ResourceList() {
       .join(", ")
   }
 
-  const getRoleLabel = (role: string) => role.replace(/barbiere/gi, "Dipendente")
+  const getRoleLabel = (role: string) => role.replace(/barbiere/gi, "Collaboratore")
 
   return (
     <>
@@ -119,7 +125,7 @@ export function ResourceList() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Cerca dipendente..."
+            placeholder="Cerca collaboratore..."
             className="pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -131,7 +137,7 @@ export function ResourceList() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Dipendente</TableHead>
+              <TableHead>Collaboratore</TableHead>
               <TableHead>Ruolo</TableHead>
               <TableHead>Contatti</TableHead>
               <TableHead>Servizi</TableHead>
@@ -143,7 +149,7 @@ export function ResourceList() {
             {filteredResources.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                  {searchQuery ? "Nessun dipendente trovato" : "Nessun dipendente disponibile"}
+                  {searchQuery ? "Nessun collaboratore trovato" : "Nessun collaboratore disponibile"}
                 </TableCell>
               </TableRow>
             ) : (
@@ -216,7 +222,7 @@ export function ResourceList() {
           <AlertDialogHeader>
             <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
             <AlertDialogDescription>
-              Questa azione non puo' essere annullata. Il dipendente verra' eliminato permanentemente.
+              Questa azione non puo' essere annullata. Il collaboratore verra' eliminato permanentemente.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

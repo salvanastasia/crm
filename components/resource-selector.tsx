@@ -28,7 +28,7 @@ export function ResourceSelector({
 }: ResourceSelectorProps) {
   const [resources, setResources] = useState<Resource[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const getRoleLabel = (role: string) => role.replace(/barbiere/gi, "Dipendente")
+  const getRoleLabel = (role: string) => role.replace(/barbiere/gi, "Collaboratore")
 
   useEffect(() => {
     const loadResources = async () => {
@@ -63,7 +63,7 @@ export function ResourceSelector({
   if (resources.length === 0) {
     return (
       <div className="text-center p-8">
-        <p className="mb-4">Nessun dipendente disponibile per questo servizio.</p>
+        <p className="mb-4">Nessun collaboratore disponibile per questo servizio.</p>
         <Button onClick={onBack} variant="outline">
           Torna indietro
         </Button>
@@ -74,7 +74,7 @@ export function ResourceSelector({
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-semibold">Seleziona un dipendente</h2>
+        <h2 className="text-xl font-semibold">Seleziona un collaboratore</h2>
         <p className="text-sm text-muted-foreground mt-1">Scegli il professionista che preferisci</p>
       </div>
 

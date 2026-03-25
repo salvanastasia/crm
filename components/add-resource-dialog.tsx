@@ -149,7 +149,7 @@ export function AddResourceDialog({ open, onOpenChange }: AddResourceDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Aggiungi Dipendente</DialogTitle>
+          <DialogTitle>Aggiungi Collaboratore</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -157,7 +157,7 @@ export function AddResourceDialog({ open, onOpenChange }: AddResourceDialogProps
               <Label htmlFor="profile-image">Foto profilo (opzionale)</Label>
               <div className="flex items-center gap-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={imagePreviewUrl || imageUrl || ""} alt="Foto dipendente" />
+                  <AvatarImage src={imagePreviewUrl || imageUrl || ""} alt="Foto collaboratore" />
                   <AvatarFallback>{getInitials(name)}</AvatarFallback>
                 </Avatar>
                 <Input id="profile-image" type="file" accept="image/*" onChange={handleImageChange} />
@@ -177,8 +177,8 @@ export function AddResourceDialog({ open, onOpenChange }: AddResourceDialogProps
                     <SelectValue placeholder="Seleziona un ruolo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Dipendente Senior">Dipendente Senior</SelectItem>
-                    <SelectItem value="Dipendente">Dipendente</SelectItem>
+                    <SelectItem value="Collaboratore Senior">Collaboratore Senior</SelectItem>
+                    <SelectItem value="Collaboratore">Collaboratore</SelectItem>
                     <SelectItem value="Apprendista">Apprendista</SelectItem>
                   </SelectContent>
                 </Select>
@@ -221,7 +221,7 @@ export function AddResourceDialog({ open, onOpenChange }: AddResourceDialogProps
 
             <div className="flex items-center space-x-2">
               <Switch id="active" checked={isActive} onCheckedChange={setIsActive} />
-              <Label htmlFor="active">Dipendente attivo</Label>
+              <Label htmlFor="active">Collaboratore attivo</Label>
             </div>
           </div>
           <DialogFooter>
