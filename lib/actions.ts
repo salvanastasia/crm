@@ -843,7 +843,11 @@ export async function bookAppointment(data: {
       return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
     }
     if (inserted?.length) {
+      console.error("[PushDebug][H21] new_appointment_before_send_push", {
+        insertedCount: inserted.length,
+      })
       await sendPushForInsertedNotifications(inserted as any)
+      console.error("[PushDebug][H21] new_appointment_after_send_push")
     }
   } catch (e) {
     console.error("[PushDebug][H20] new_appointment_notification_error", e)
