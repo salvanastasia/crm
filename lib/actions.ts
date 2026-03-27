@@ -27,6 +27,15 @@ async function db() {
   return createSupabaseServerClient()
 }
 
+function dbAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !serviceRoleKey) return null
+  return createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
+}
+
 function mapService(r: {
   id: string
   name: string
@@ -797,7 +806,13 @@ export async function bookAppointment(data: {
     return { success: false, message: apptErr?.message ?? "Errore creazione appuntamento" }
   }
   try {
-    const { data: inserted } = await supabase
+    const adminSupabase = dbAdmin()
+    if (!adminSupabase) {
+      console.error("[PushDebug][H20] new_appointment_admin_client_missing")
+      return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
+    }
+
+    const { data: inserted, error: insertErr } = await adminSupabase
       .from("notifications")
       .insert({
         barber_id: data.barberId,
@@ -821,7 +836,12 @@ export async function bookAppointment(data: {
     console.error("[PushDebug][H20] new_appointment_notification_inserted", {
       insertedCount: inserted?.length ?? 0,
       appointmentId: appt.id,
+      hasInsertError: Boolean(insertErr),
+      insertErrorMessage: insertErr?.message ?? null,
     })
+    if (insertErr) {
+      return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
+    }
     if (inserted?.length) {
       await sendPushForInsertedNotifications(inserted as any)
     }
