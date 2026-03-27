@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "580199495212",
+    "project_id": "grooma-fbede",
+    "storage_bucket": "grooma-fbede.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:580199495212:android:eeaad2a75d932e29944389",
+        "android_client_info": {
+          "package_name": "com.grooma.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDAkSBGzA1mi8OXXn1RxN6cYG-e0Pe9i70"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

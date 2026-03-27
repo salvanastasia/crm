@@ -1,2 +1,3 @@
 /build/*
 !/build/.npmkeep
+mobile/android/app/google-services.json
