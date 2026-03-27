@@ -675,6 +675,40 @@ export async function updateNotificationSettings(settings: NotificationSettings)
   }
 }
 
+async function notifyBarberStaffNewClient(
+  supabase: NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>,
+  params: { barberId: string; clientId: string; clientName: string; clientEmail: string },
+) {
+  try {
+    const { data: inserted } = await supabase
+      .from("notifications")
+      .insert({
+        barber_id: params.barberId,
+        recipient_user_id: null,
+        audience: "barber_staff",
+        type: "new_client",
+        title: "Nuovo cliente registrato",
+        body: `${params.clientName} • ${params.clientEmail}`,
+        data: {
+          clientId: params.clientId,
+          clientName: params.clientName,
+          clientEmail: params.clientEmail,
+        },
+      })
+      .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
+
+    console.error("[PushDebug][H19] new_client_notification_inserted", {
+      insertedCount: inserted?.length ?? 0,
+      barberId: params.barberId,
+    })
+    if (inserted?.length) {
+      await sendPushForInsertedNotifications(inserted as any)
+    }
+  } catch (e) {
+    console.error("[PushDebug][H19] new_client_notification_error", e)
+  }
+}
+
 // --- Prenotazioni (calendario) ---
 
 export async function bookAppointment(data: {
@@ -761,6 +795,38 @@ export async function bookAppointment(data: {
       return { success: false, message: "Questo orario non e' piu' disponibile. Scegli un altro slot." }
     }
     return { success: false, message: apptErr?.message ?? "Errore creazione appuntamento" }
+  }
+  try {
+    const { data: inserted } = await supabase
+      .from("notifications")
+      .insert({
+        barber_id: data.barberId,
+        recipient_user_id: null,
+        audience: "barber_staff",
+        type: "new_appointment",
+        title: "Nuovo appuntamento ricevuto",
+        body: `${data.clientName} • ${dateStr} ${String(data.time).slice(0, 5)}`,
+        data: {
+          appointmentId: appt.id,
+          clientId,
+          clientName: data.clientName,
+          date: dateStr,
+          time: String(data.time).slice(0, 5),
+          serviceId: data.serviceId,
+          resourceId: data.resourceId,
+        },
+      })
+      .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
+
+    console.error("[PushDebug][H20] new_appointment_notification_inserted", {
+      insertedCount: inserted?.length ?? 0,
+      appointmentId: appt.id,
+    })
+    if (inserted?.length) {
+      await sendPushForInsertedNotifications(inserted as any)
+    }
+  } catch (e) {
+    console.error("[PushDebug][H20] new_appointment_notification_error", e)
   }
   return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
 }
@@ -865,6 +931,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
       })
 
       if (!insertErr) {
+        await notifyBarberStaffNewClient(supabase, {
+          barberId: clientData.barberId,
+          clientId: clientProfileId,
+          clientName: name,
+          clientEmail: email,
+        })
         return {
           id: clientProfileId,
           name,
@@ -1009,6 +1081,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
               })
 
               if (!retryErr2) {
+                await notifyBarberStaffNewClient(supabase, {
+                  barberId: clientData.barberId,
+                  clientId: clientProfileId,
+                  clientName: name,
+                  clientEmail: email,
+                })
                 return {
                   id: clientProfileId,
                   name,
@@ -1043,6 +1121,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
         // #endregion
       }
       // Note: if we reached here after RLS repair, the row insert succeeded and we should continue.
+      await notifyBarberStaffNewClient(supabase, {
+        barberId: clientData.barberId,
+        clientId: clientProfileId,
+        clientName: name,
+        clientEmail: email,
+      })
       return {
         id: clientProfileId,
         name,
@@ -1177,6 +1261,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
         if (insertProfileErr) return null
       }
 
+      await notifyBarberStaffNewClient(supabase, {
+        barberId: clientData.barberId,
+        clientId: clientProfileId,
+        clientName: clientData.name,
+        clientEmail: email,
+      })
       return {
         id: clientProfileId,
         name: clientData.name,
@@ -1248,6 +1338,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
     // Best-effort: try to generate/send the magic link again (may still be rate-limited; list should still work).
     await admin.auth.admin.generateLink({ type: "magiclink", email: clientData.email, options: { emailRedirectTo } } as any).catch(() => {})
 
+    await notifyBarberStaffNewClient(supabase, {
+      barberId: clientData.barberId,
+      clientId: userId,
+      clientName: clientData.name,
+      clientEmail: clientData.email,
+    })
     return {
       id: userId,
       name: clientData.name,
@@ -1308,6 +1404,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
     return null
   }
 
+  await notifyBarberStaffNewClient(supabase, {
+    barberId: clientData.barberId,
+    clientId: userId,
+    clientName: name,
+    clientEmail: email,
+  })
   return {
     id: userId,
     name,
@@ -1543,23 +1645,6 @@ export async function updateAppointmentStatus(
               time: timeKey,
             },
           },
-          {
-            barber_id: barberId,
-            recipient_user_id: null,
-            audience: "barber_staff",
-            type: "appointment_status",
-            title: status === "confirmed" ? "Prenotazione approvata" : "Prenotazione rifiutata",
-            body: `${serviceName} • ${dateKey} ${timeKey}`,
-            data: {
-              appointmentId,
-              status,
-              clientId: before.client_id,
-              serviceName,
-              resourceName,
-              date: dateKey,
-              time: timeKey,
-            },
-          },
         ])
         .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
@@ -1740,9 +1825,17 @@ export async function updateAppointmentDetailsByAdmin(
     return { ok: false, message: error.message ?? "Aggiornamento non riuscito" }
   }
 
-  // Notify only on status transitions that matter for the client/staff.
+  // Client receives notification on any status transition.
   try {
-    if (row?.client_id && (payload.status === "confirmed" || payload.status === "cancelled")) {
+    const shouldNotifyStatusChange =
+      row?.client_id &&
+      row.status !== payload.status &&
+      (payload.status === "pending" ||
+        payload.status === "confirmed" ||
+        payload.status === "cancelled" ||
+        payload.status === "completed")
+
+    if (shouldNotifyStatusChange) {
       const [{ data: svc }, { data: res }] = await Promise.all([
         row.service_id
           ? supabase.from("services").select("name").eq("id", row.service_id).eq("barber_id", barberId).maybeSingle()
@@ -1755,7 +1848,14 @@ export async function updateAppointmentDetailsByAdmin(
       const serviceName = svc?.name ?? "Servizio"
       const resourceName = res?.name ?? "Staff"
       const timeKey = String(payload.time).slice(0, 5)
-      const clientTitle = payload.status === "confirmed" ? "Prenotazione confermata" : "Prenotazione rifiutata"
+      const clientTitle =
+        payload.status === "confirmed"
+          ? "Prenotazione confermata"
+          : payload.status === "cancelled"
+            ? "Prenotazione rifiutata"
+            : payload.status === "completed"
+              ? "Prenotazione completata"
+              : "Prenotazione in attesa"
       const clientBody = `${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`
 
       const { data: insertedNotifications } = await supabase
@@ -1771,23 +1871,6 @@ export async function updateAppointmentDetailsByAdmin(
             data: {
               appointmentId,
               status: payload.status,
-              serviceName,
-              resourceName,
-              date: dateKey,
-              time: timeKey,
-            },
-          },
-          {
-            barber_id: barberId,
-            recipient_user_id: null,
-            audience: "barber_staff",
-            type: "appointment_status",
-            title: payload.status === "confirmed" ? "Prenotazione approvata" : "Prenotazione rifiutata",
-            body: `${serviceName} • ${dateKey} ${timeKey}`,
-            data: {
-              appointmentId,
-              status: payload.status,
-              clientId: row.client_id,
               serviceName,
               resourceName,
               date: dateKey,
