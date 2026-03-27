@@ -15,6 +15,9 @@ function resolveFirebaseServiceAccountJson(): string | null {
   } catch {
     // ignore
   }
+  console.error("[PushDebug][H33] firebase_service_account_path_not_readable", {
+    pathLooksAbsolute: raw.startsWith("/"),
+  })
   return raw
 }
 
@@ -58,6 +61,10 @@ function getFirebaseApp(): App | null {
         clientEmail: parsed.client_email,
         privateKey: parsed.private_key,
       }),
+    })
+
+    console.error("[PushDebug][H32] firebase_admin_init_ok", {
+      projectId: parsed.project_id,
     })
 
     return app
