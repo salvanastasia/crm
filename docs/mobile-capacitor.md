@@ -16,7 +16,7 @@ La shell nativa (`mobile/ios`, `mobile/android`) carica il sito Next.js pubblica
 |-----------|-------------|
 | `CAP_SERVER_URL` | URL base del sito nella WebView. Se omesso, [`capacitor.config.ts`](../capacitor.config.ts) usa il deploy predefinito `https://toelettatura.vercel.app`. Per dev su LAN imposta es. `http://192.168.x.x:3000` e `CAP_SERVER_CLEARTEXT=true`. |
 | `CAP_SERVER_CLEARTEXT` | `true` solo in dev per `http://` (es. `http://192.168.1.10:3000`). Su Android serve anche `android:usesCleartextTraffic` già gestito in debug da Capacitor; **mai in produzione**. |
-| `CAP_APP_ID` | Bundle id (default `com.barbercrm.app`). |
+| `CAP_APP_ID` | Bundle id (default `com.grooma.app`). |
 | `CAP_APP_NAME` | Nome visualizzato (default `Barber CRM`). |
 
 Esempio prima di aprire Xcode/Android Studio:
@@ -55,7 +55,7 @@ Dopo ogni cambio a `capacitor.config.ts` o plugin, eseguire `npm run cap:sync`.
 
 2. **Universal Links / App Links** (opzionale): se il provider OAuth riapre l’app con un URL **https**, il bridge in `components/capacitor-deep-link-bridge.tsx` ricarica quella URL nella WebView.
 
-3. **Custom URL scheme** (es. `com.barbercrm.app://…`): va registrato in iOS/Android **e** in Supabase come redirect; spesso serve logica aggiuntiva per mappare lo scheme all’URL https del sito. Per semplicità si consiglia di mantenere callback **HTTPS** dove possibile.
+3. **Custom URL scheme** (es. `com.grooma.app://…`): va registrato in iOS/Android **e** in Supabase come redirect; spesso serve logica aggiuntiva per mappare lo scheme all’URL https del sito. Per semplicità si consiglia di mantenere callback **HTTPS** dove possibile.
 
 4. Email di conferma: il link deve puntare a un URL raggiungibile dalla WebView (stesso dominio del `CAP_SERVER_URL` in produzione).
 
@@ -65,6 +65,33 @@ Dopo ogni cambio a `capacitor.config.ts` o plugin, eseguire `npm run cap:sync`.
 - Bottom bar cliente vs staff: `lib/mobile-nav.ts`, `components/mobile-bottom-nav.tsx`
 - Layout e padding safe-area: `components/app-shell.tsx`
 - Su staff in app nativa la **nav orizzontale desktop** in header è nascosta (si usa la bottom bar): `components/header.tsx`
+
+## Push notifications (background/closed app)
+
+Per ricevere notifiche quando l'app e' in background o chiusa:
+
+1. **Plugin Capacitor**
+   - dipendenze: `@capacitor/push-notifications` e `@capacitor/local-notifications`
+   - dopo update: `npm run cap:sync`
+
+2. **Supabase migration**
+   - applicare la migration `supabase/migrations/20260326104000_push_devices.sql`
+   - crea tabella `push_devices` dove salvare i token device.
+
+3. **FCM/APNs setup**
+   - Android: configura Firebase nel progetto Android (`google-services.json` + Firebase project).
+   - iOS: configura APNs in Apple Developer + Firebase Cloud Messaging per iOS.
+   - abilita capability Push Notifications su Xcode.
+
+4. **Variabili ambiente server**
+   - `FIREBASE_SERVICE_ACCOUNT_JSON` (JSON del service account Firebase per `firebase-admin`)
+   - `SUPABASE_SERVICE_ROLE_KEY` (usata server-side per leggere token/staff recipients)
+   - `NEXT_PUBLIC_SUPABASE_URL`
+
+5. **Flusso implementato**
+   - app native registra il token push su login (`/api/push/register`)
+   - backend salva/aggiorna token in `push_devices`
+   - quando viene inserita una riga in `notifications`, il server invia push remoto ai device destinatari
 
 ## Commit del codice nativo
 

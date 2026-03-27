@@ -5,6 +5,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AppShell } from "@/components/app-shell"
 import { AuthProvider } from "@/components/auth-context"
+import { CapacitorNotificationBridge } from "@/components/capacitor-notification-bridge"
+import { CapacitorPushRegistrationBridge } from "@/components/capacitor-push-registration-bridge"
 import { Toaster } from "@/components/ui/toaster"
 import { cn } from "@/lib/utils"
 
@@ -37,6 +39,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <CapacitorPushRegistrationBridge />
+            <CapacitorNotificationBridge />
             <AppShell>{children}</AppShell>
             <Toaster />
           </AuthProvider>

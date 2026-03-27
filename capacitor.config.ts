@@ -23,6 +23,11 @@ const config: CapacitorConfig = {
   android: {
     path: "mobile/android",
   },
+  plugins: {
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"],
+    },
+  },
 }
 
 export default config

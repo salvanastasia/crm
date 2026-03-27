@@ -1,4 +1,4 @@
-package com.barbercrm.app;
+package com.grooma.app;
 
 import com.getcapacitor.BridgeActivity;
 

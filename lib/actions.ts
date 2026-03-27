@@ -1,6 +1,7 @@
 "use server"
 
 import { createSupabaseServerClient } from "@/lib/supabase/server"
+import { sendPushForInsertedNotifications } from "@/lib/push"
 import { headers } from "next/headers"
 import { createClient } from "@supabase/supabase-js"
 import { randomBytes, randomUUID } from "crypto"
@@ -1523,41 +1524,48 @@ export async function updateAppointmentStatus(
       const clientTitle = status === "confirmed" ? "Prenotazione confermata" : "Prenotazione rifiutata"
       const clientBody = `${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`
 
-      await supabase.from("notifications").insert([
-        {
-          barber_id: barberId,
-          recipient_user_id: before.client_id,
-          audience: "user",
-          type: "appointment_status",
-          title: clientTitle,
-          body: clientBody,
-          data: {
-            appointmentId,
-            status,
-            serviceName,
-            resourceName,
-            date: dateKey,
-            time: timeKey,
+      const { data: insertedNotifications } = await supabase
+        .from("notifications")
+        .insert([
+          {
+            barber_id: barberId,
+            recipient_user_id: before.client_id,
+            audience: "user",
+            type: "appointment_status",
+            title: clientTitle,
+            body: clientBody,
+            data: {
+              appointmentId,
+              status,
+              serviceName,
+              resourceName,
+              date: dateKey,
+              time: timeKey,
+            },
           },
-        },
-        {
-          barber_id: barberId,
-          recipient_user_id: null,
-          audience: "barber_staff",
-          type: "appointment_status",
-          title: status === "confirmed" ? "Prenotazione approvata" : "Prenotazione rifiutata",
-          body: `${serviceName} • ${dateKey} ${timeKey}`,
-          data: {
-            appointmentId,
-            status,
-            clientId: before.client_id,
-            serviceName,
-            resourceName,
-            date: dateKey,
-            time: timeKey,
+          {
+            barber_id: barberId,
+            recipient_user_id: null,
+            audience: "barber_staff",
+            type: "appointment_status",
+            title: status === "confirmed" ? "Prenotazione approvata" : "Prenotazione rifiutata",
+            body: `${serviceName} • ${dateKey} ${timeKey}`,
+            data: {
+              appointmentId,
+              status,
+              clientId: before.client_id,
+              serviceName,
+              resourceName,
+              date: dateKey,
+              time: timeKey,
+            },
           },
-        },
-      ])
+        ])
+        .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
+
+      if (insertedNotifications?.length) {
+        await sendPushForInsertedNotifications(insertedNotifications as any)
+      }
     }
   } catch (e) {
     console.error("updateAppointmentStatus(notifications):", e)
