@@ -1672,13 +1672,18 @@ export async function updateAppointmentDetailsByAdmin(
 ): Promise<{ ok: boolean; message?: string }> {
   const supabase = await db()
   if (!supabase || !appointmentId || !barberId) return { ok: false, message: "Richiesta non valida" }
+  console.error("[PushDebug][H17] updateAppointmentDetailsByAdmin_called", {
+    appointmentId,
+    barberId,
+    status: payload.status,
+  })
 
   const dateKey = appointmentCalendarDateKey(payload.date)
   if (!dateKey) return { ok: false, message: "Data non valida" }
 
   const { data: row, error: rowErr } = await supabase
     .from("appointments")
-    .select("id, service_id, resource_id")
+    .select("id, client_id, service_id, resource_id, date, time, status")
     .eq("id", appointmentId)
     .eq("barber_id", barberId)
     .maybeSingle()
@@ -1733,6 +1738,74 @@ export async function updateAppointmentDetailsByAdmin(
       return { ok: false, message: "Slot gia' occupato. Scegli un altro orario." }
     }
     return { ok: false, message: error.message ?? "Aggiornamento non riuscito" }
+  }
+
+  // Notify only on status transitions that matter for the client/staff.
+  try {
+    if (row?.client_id && (payload.status === "confirmed" || payload.status === "cancelled")) {
+      const [{ data: svc }, { data: res }] = await Promise.all([
+        row.service_id
+          ? supabase.from("services").select("name").eq("id", row.service_id).eq("barber_id", barberId).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+        row.resource_id
+          ? supabase.from("resources").select("name").eq("id", row.resource_id).eq("barber_id", barberId).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+      ])
+
+      const serviceName = svc?.name ?? "Servizio"
+      const resourceName = res?.name ?? "Staff"
+      const timeKey = String(payload.time).slice(0, 5)
+      const clientTitle = payload.status === "confirmed" ? "Prenotazione confermata" : "Prenotazione rifiutata"
+      const clientBody = `${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`
+
+      const { data: insertedNotifications } = await supabase
+        .from("notifications")
+        .insert([
+          {
+            barber_id: barberId,
+            recipient_user_id: row.client_id,
+            audience: "user",
+            type: "appointment_status",
+            title: clientTitle,
+            body: clientBody,
+            data: {
+              appointmentId,
+              status: payload.status,
+              serviceName,
+              resourceName,
+              date: dateKey,
+              time: timeKey,
+            },
+          },
+          {
+            barber_id: barberId,
+            recipient_user_id: null,
+            audience: "barber_staff",
+            type: "appointment_status",
+            title: payload.status === "confirmed" ? "Prenotazione approvata" : "Prenotazione rifiutata",
+            body: `${serviceName} • ${dateKey} ${timeKey}`,
+            data: {
+              appointmentId,
+              status: payload.status,
+              clientId: row.client_id,
+              serviceName,
+              resourceName,
+              date: dateKey,
+              time: timeKey,
+            },
+          },
+        ])
+        .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
+
+      console.error("[PushDebug][H18] updateAppointmentDetailsByAdmin_notifications_inserted", {
+        insertedNotificationsCount: insertedNotifications?.length ?? 0,
+      })
+      if (insertedNotifications?.length) {
+        await sendPushForInsertedNotifications(insertedNotifications as any)
+      }
+    }
+  } catch (e) {
+    console.error("[PushDebug][H18] updateAppointmentDetailsByAdmin_notifications_error", e)
   }
 
   return { ok: true }
