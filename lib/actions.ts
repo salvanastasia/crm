@@ -733,6 +733,9 @@ export async function bookAppointment(data: {
 }): Promise<{ success: boolean; message: string; appointmentId?: string }> {
   const supabase = await db()
   if (!supabase) return { success: false, message: "Database non configurato" }
+  console.error("[PushDebug][H22] bookAppointment_code_version", {
+    marker: "book-v2-h21-path",
+  })
 
   const dateStr = appointmentCalendarDateKey(data.date)
   if (!dateStr) return { success: false, message: "Data non valida" }
@@ -839,6 +842,14 @@ export async function bookAppointment(data: {
       hasInsertError: Boolean(insertErr),
       insertErrorMessage: insertErr?.message ?? null,
     })
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H23',location:'lib/actions.ts:bookAppointment',message:'new_appointment_insert_shape',data:{isArray:Array.isArray(inserted),len:Array.isArray(inserted)?inserted.length:0,hasInsertErr:Boolean(insertErr)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    console.error("[PushDebug][H23] new_appointment_insert_shape", {
+      isArray: Array.isArray(inserted),
+      len: Array.isArray(inserted) ? inserted.length : 0,
+      hasInsertErr: Boolean(insertErr),
+    })
     if (insertErr) {
       return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
     }
@@ -848,6 +859,10 @@ export async function bookAppointment(data: {
       })
       await sendPushForInsertedNotifications(inserted as any)
       console.error("[PushDebug][H21] new_appointment_after_send_push")
+    } else {
+      console.error("[PushDebug][H24] new_appointment_skip_push_empty_inserted", {
+        insertedNullish: inserted == null,
+      })
     }
   } catch (e) {
     console.error("[PushDebug][H20] new_appointment_notification_error", e)
