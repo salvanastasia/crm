@@ -12,6 +12,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
 
+    // Forward APNs registration callbacks to Capacitor PushNotifications plugin.
+    // Without this bridge, JS "registration"/"registrationError" listeners may never fire on iOS.
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+        print("[PushDebug] didRegisterForRemoteNotificationsWithDeviceToken received, bytes: \(deviceToken.count)")
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+        print("[PushDebug] didFailToRegisterForRemoteNotificationsWithError: \(error.localizedDescription)")
+    }
+
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
         // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.

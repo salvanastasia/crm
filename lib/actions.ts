@@ -1564,6 +1564,13 @@ export async function updateAppointmentStatus(
         .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
       if (insertedNotifications?.length) {
+        // #region agent log
+        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H14',location:'lib/actions.ts:updateAppointmentStatus',message:'notifications_inserted_before_push_dispatch',data:{insertedNotificationsCount:insertedNotifications.length,status},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        console.error("[PushDebug][H14] notifications_inserted_before_push_dispatch", {
+          insertedNotificationsCount: insertedNotifications.length,
+          status,
+        })
         await sendPushForInsertedNotifications(insertedNotifications as any)
       }
     }

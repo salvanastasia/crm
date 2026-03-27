@@ -22,6 +22,13 @@ type PushDeviceRow = {
 function adminSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H9',location:'lib/push.ts:adminSupabase',message:'admin_supabase_env_check',data:{hasUrl:Boolean(url),hasServiceRoleKey:Boolean(serviceRoleKey)},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  console.error("[PushDebug][H9] admin_supabase_env_check", {
+    hasUrl: Boolean(url),
+    hasServiceRoleKey: Boolean(serviceRoleKey),
+  })
   if (!url || !serviceRoleKey) return null
 
   return createClient(url, serviceRoleKey, {
@@ -31,6 +38,13 @@ function adminSupabase() {
 
 async function sendFcmMessage(token: string, payload: { title: string; body: string; data: Record<string, string> }) {
   const messaging = getFirebaseMessaging()
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H10',location:'lib/push.ts:sendFcmMessage',message:'firebase_messaging_availability',data:{hasMessaging:Boolean(messaging),tokenLen:token.length},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  console.error("[PushDebug][H10] firebase_messaging_availability", {
+    hasMessaging: Boolean(messaging),
+    tokenLen: token.length,
+  })
   if (!messaging) return { ok: false as const, error: "FIREBASE_SERVICE_ACCOUNT_JSON missing" }
 
   try {
@@ -60,12 +74,23 @@ async function sendFcmMessage(token: string, payload: { title: string; body: str
     return { ok: true as const }
   } catch (error) {
     const code = (error as { code?: string } | null)?.code ?? ""
+    // #region agent log
+    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H11',location:'lib/push.ts:sendFcmMessage',message:'firebase_send_error',data:{errorCode:code || null,errorMessage:(error as any)?.message ?? null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    console.error("[PushDebug][H11] firebase_send_error", {
+      errorCode: code || null,
+      errorMessage: (error as any)?.message ?? null,
+    })
     return { ok: false as const, error: code || "send_failed" }
   }
 }
 
 export async function sendPushForInsertedNotifications(rows: NotificationRow[]) {
   if (!rows.length) return
+  // #region agent log
+  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H12',location:'lib/push.ts:sendPushForInsertedNotifications',message:'send_push_start',data:{rowsCount:rows.length},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+  console.error("[PushDebug][H12] send_push_start", { rowsCount: rows.length })
   const supabase = adminSupabase()
   if (!supabase) return
 
@@ -93,6 +118,14 @@ export async function sendPushForInsertedNotifications(rows: NotificationRow[]) 
         .eq("is_active", true)
 
       const deviceRows = (devices ?? []) as PushDeviceRow[]
+      // #region agent log
+      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H13',location:'lib/push.ts:sendPushForInsertedNotifications',message:'push_recipients_devices_resolved',data:{recipientIdsCount:recipientIds.length,deviceRowsCount:deviceRows.length,audience:row.audience},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      console.error("[PushDebug][H13] push_recipients_devices_resolved", {
+        recipientIdsCount: recipientIds.length,
+        deviceRowsCount: deviceRows.length,
+        audience: row.audience,
+      })
       if (!deviceRows.length) continue
 
       const baseData: Record<string, string> = {
