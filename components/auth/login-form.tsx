@@ -6,6 +6,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClientComponentClient } from "@/lib/mock-helpers"
+import { toItalianAuthErrorMessage } from "@/lib/auth-error-messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -36,7 +37,7 @@ export function LoginForm() {
       })
 
       if (error) {
-        setError(error.message)
+        setError(toItalianAuthErrorMessage(error.message))
         setIsLoading(false)
         return
       }
@@ -72,10 +73,11 @@ export function LoginForm() {
       })
 
       if (error) {
-        setError(error.message)
+        const message = toItalianAuthErrorMessage(error.message)
+        setError(message)
         toast({
           title: "Errore di autenticazione",
-          description: error.message,
+          description: message,
           variant: "destructive",
         })
       }

@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { toItalianAuthErrorMessage } from "@/lib/auth-error-messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,7 +63,7 @@ export function ResetPasswordForm() {
           setCooldownUntil(Date.now() + waitSeconds * 1000)
           setError(`Hai effettuato richieste troppo ravvicinate. Attendi ${waitSeconds} secondi e riprova.`)
         } else {
-          setError(error.message)
+          setError(toItalianAuthErrorMessage(error.message))
         }
         return
       }

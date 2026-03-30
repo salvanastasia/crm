@@ -35,6 +35,7 @@ export default function BookingPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isBookingConfirming, setIsBookingConfirming] = useState(false)
   const [bookingError, setBookingError] = useState<string | null>(null)
+  const bookingSteps = ["Servizio", "Collaboratore", "Data e Ora", "Pagamento", "Conferma"]
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== "client") return
@@ -196,7 +197,7 @@ export default function BookingPage() {
             </div>
           </div>
 
-          <Card className="w-full max-w-2xl mx-auto shadow-sm">
+          <Card className="w-full max-w-2xl mx-auto border-0 shadow-sm sm:border">
             <CardHeader>
               <div className="space-y-4">
                 <Skeleton className="h-5 w-60 rounded-md" />
@@ -249,14 +250,26 @@ export default function BookingPage() {
         <p className="text-muted-foreground mt-2">Prenota il tuo appuntamento</p>
       </div>
 
-      <Card className="w-full max-w-2xl mx-auto shadow-sm">
+      <Card className="w-full max-w-2xl mx-auto border-0 shadow-sm sm:border">
         <CardHeader>
-          <Steps currentStep={currentStep} className="mb-4">
-            <Step title="Servizio" />
-            <Step title="Collaboratore" />
-            <Step title="Data e Ora" />
-            <Step title="Pagamento" />
-            <Step title="Conferma" />
+          <div className="mb-4 space-y-2 sm:hidden">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                Passo {currentStep + 1} di {bookingSteps.length}
+              </span>
+              <span className="font-medium text-foreground">{bookingSteps[currentStep]}</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${((currentStep + 1) / bookingSteps.length) * 100}%` }}
+              />
+            </div>
+          </div>
+          <Steps currentStep={currentStep} className="mb-4 hidden sm:flex">
+            {bookingSteps.map((title) => (
+              <Step key={title} title={title} />
+            ))}
           </Steps>
         </CardHeader>
         <CardContent>

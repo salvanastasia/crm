@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
+import { toItalianAuthErrorMessage } from "@/lib/auth-error-messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -54,7 +55,7 @@ export function UpdatePasswordForm() {
         })
 
         if (error) {
-          setError(error.message ?? "Link di recupero non valido o scaduto.")
+          setError(toItalianAuthErrorMessage(error.message))
           return
         }
 
@@ -69,7 +70,7 @@ export function UpdatePasswordForm() {
 
       const { error: verifyErr } = await (supabase.auth as any).verifyOtp(verifyPayload)
       if (verifyErr) {
-        setError(verifyErr.message ?? "Token non valido o scaduto.")
+        setError(toItalianAuthErrorMessage(verifyErr.message))
         return
       }
 
@@ -79,7 +80,7 @@ export function UpdatePasswordForm() {
 
       if (error) {
         console.error("Errore durante l'aggiornamento:", error)
-        setError(error.message)
+        setError(toItalianAuthErrorMessage(error.message))
         return
       }
 

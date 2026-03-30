@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClientComponentClient } from "@/lib/mock-helpers"
+import { toItalianAuthErrorMessage } from "@/lib/auth-error-messages"
 import { Eye, EyeOff } from "lucide-react"
 
 export default function LoginDirectPage() {
@@ -37,7 +38,7 @@ export default function LoginDirectPage() {
 
       if (error) {
         console.error("Errore login:", error.message)
-        setError(error.message)
+        setError(toItalianAuthErrorMessage(error.message))
         return
       }
 

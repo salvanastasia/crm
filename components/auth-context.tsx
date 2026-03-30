@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import type { AuthState, User } from "@/lib/types"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { syncProfileFromAuthUser } from "@/lib/profile-sync"
+import { toItalianAuthErrorMessage } from "@/lib/auth-error-messages"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 export type RegisterResult = {
@@ -255,19 +256,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
 
       if (error) {
+        const message = toItalianAuthErrorMessage(error.message)
         setAuthState({
           user: null,
           isAuthenticated: false,
           isLoading: false,
-          error: error.message,
+          error: message,
         })
-        return { success: false, message: error.message }
+        return { success: false, message }
       }
 
       setAuthState((prev) => ({ ...prev, isLoading: false, error: null }))
       return { success: true, message: "Accesso effettuato." }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Errore durante l'accesso"
+      const errorMessage = toItalianAuthErrorMessage(error instanceof Error ? error.message : null)
       setAuthState({
         user: null,
         isAuthenticated: false,
@@ -302,12 +304,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (error) {
+        const message = toItalianAuthErrorMessage(error.message)
         setAuthState((prev) => ({
           ...prev,
           isLoading: false,
-          error: error.message,
+          error: message,
         }))
-        return { success: false, message: error.message }
+        return { success: false, message }
       }
 
       setAuthState((prev) => ({
@@ -331,7 +334,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         pendingConfirmation: false,
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Errore durante la registrazione"
+      const errorMessage = toItalianAuthErrorMessage(error instanceof Error ? error.message : null)
       setAuthState((prev) => ({
         ...prev,
         isLoading: false,
