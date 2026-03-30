@@ -11,15 +11,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         FirebaseApp.configure()
         Messaging.messaging().delegate = self
+        print("[Push] FirebaseApp configured, Messaging delegate set")
         return true
     }
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        // Give the APNs token to Firebase so it can exchange it for an FCM token.
+        let hexToken = deviceToken.map { String(format: "%02x", $0) }.joined()
+        print("[Push] APNs token received (\(deviceToken.count) bytes): \(hexToken.prefix(20))…")
+
         Messaging.messaging().apnsToken = deviceToken
+
+        // Proactively request the FCM token now that APNs token is available.
+        Messaging.messaging().token { token, error in
+            if let token = token {
+                print("[Push] FCM token fetched: \(token.prefix(20))…")
+                NotificationCenter.default.post(
+                    name: .capacitorDidRegisterForRemoteNotifications,
+                    object: token
+                )
+            } else {
+                print("[Push] FCM token fetch failed: \(error?.localizedDescription ?? "nil")")
+            }
+        }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("[Push] APNs registration FAILED: \(error.localizedDescription)")
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
     }
 
@@ -39,11 +56,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 extension AppDelegate: MessagingDelegate {
-    /// Called whenever an FCM token is generated or refreshed.
-    /// We post it as a String so the Capacitor PushNotifications plugin picks it up
-    /// via its `else if let stringToken` branch instead of the raw APNs Data path.
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        print("[Push] MessagingDelegate token callback: \(fcmToken?.prefix(20) ?? "nil")…")
         guard let token = fcmToken else { return }
-        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: token)
+        NotificationCenter.default.post(
+            name: .capacitorDidRegisterForRemoteNotifications,
+            object: token
+        )
     }
 }
