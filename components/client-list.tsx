@@ -43,16 +43,10 @@ export function ClientList() {
     }
     const loadClients = async () => {
       setIsLoadingClients(true)
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'pre-fix-client',hypothesisId:'B',location:'components/client-list.tsx',message:'loadClients:start',data:{hasBarberId:!!barberId},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
       try {
         const data = await getClients(barberId)
         setClients(data)
         setFilteredClients(data)
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'pre-fix-client',hypothesisId:'B',location:'components/client-list.tsx',message:'loadClients:done',data:{count:(data??[]).length},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
       } finally {
         setIsLoadingClients(false)
       }
@@ -66,14 +60,8 @@ export function ClientList() {
     const onClientsUpdated = (evt: Event) => {
       const detail = (evt as CustomEvent<{ barberId?: string }>).detail
       if (detail?.barberId && detail.barberId !== barberId) return
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'pre-fix-client',hypothesisId:'A',location:'components/client-list.tsx',message:'clientsUpdated event',data:{matches:true},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
       void (async () => {
         const data = await getClients(barberId)
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'J',location:'components/client-list.tsx',message:'clientsUpdated:refetch:done',data:{count:(data??[]).length,sample:(data??[]).slice(0,2).map(c=>({email:c.email,phone:c.phone,name:c.name}))},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
         setClients(data)
         setFilteredClients(data)
       })()

@@ -706,15 +706,10 @@ async function notifyBarberStaffNewClient(
       })
       .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
-    console.error("[PushDebug][H19] new_client_notification_inserted", {
-      insertedCount: inserted?.length ?? 0,
-      barberId: params.barberId,
-    })
     if (inserted?.length) {
       await sendPushForInsertedNotifications(inserted as any)
     }
   } catch (e) {
-    console.error("[PushDebug][H19] new_client_notification_error", e)
   }
 }
 
@@ -733,9 +728,6 @@ export async function bookAppointment(data: {
 }): Promise<{ success: boolean; message: string; appointmentId?: string }> {
   const supabase = await db()
   if (!supabase) return { success: false, message: "Database non configurato" }
-  console.error("[PushDebug][H22] bookAppointment_code_version", {
-    marker: "book-v2-h21-path",
-  })
 
   const dateStr = appointmentCalendarDateKey(data.date)
   if (!dateStr) return { success: false, message: "Data non valida" }
@@ -811,7 +803,6 @@ export async function bookAppointment(data: {
   try {
     const adminSupabase = dbAdmin()
     if (!adminSupabase) {
-      console.error("[PushDebug][H20] new_appointment_admin_client_missing")
       return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
     }
 
@@ -836,36 +827,14 @@ export async function bookAppointment(data: {
       })
       .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
-    console.error("[PushDebug][H20] new_appointment_notification_inserted", {
-      insertedCount: inserted?.length ?? 0,
-      appointmentId: appt.id,
-      hasInsertError: Boolean(insertErr),
-      insertErrorMessage: insertErr?.message ?? null,
-    })
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H23',location:'lib/actions.ts:bookAppointment',message:'new_appointment_insert_shape',data:{isArray:Array.isArray(inserted),len:Array.isArray(inserted)?inserted.length:0,hasInsertErr:Boolean(insertErr)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    console.error("[PushDebug][H23] new_appointment_insert_shape", {
-      isArray: Array.isArray(inserted),
-      len: Array.isArray(inserted) ? inserted.length : 0,
-      hasInsertErr: Boolean(insertErr),
-    })
     if (insertErr) {
       return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
     }
     if (inserted?.length) {
-      console.error("[PushDebug][H21] new_appointment_before_send_push", {
-        insertedCount: inserted.length,
-      })
       await sendPushForInsertedNotifications(inserted as any)
-      console.error("[PushDebug][H21] new_appointment_after_send_push")
     } else {
-      console.error("[PushDebug][H24] new_appointment_skip_push_empty_inserted", {
-        insertedNullish: inserted == null,
-      })
     }
   } catch (e) {
-    console.error("[PushDebug][H20] new_appointment_notification_error", e)
   }
   return { success: true, message: "Appuntamento prenotato", appointmentId: appt.id }
 }
@@ -937,9 +906,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
   const email = clientData.email?.trim().toLowerCase() ?? ""
   const name = clientData.name.trim()
   const phone = clientData.phone || null
-  // #region agent log
-  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'K',location:'lib/actions.ts:addClient',message:'addClient:enter',data:{emailProvided:!!email,nameLen:name.length,phoneLen:(phone??"").toString().length,barberId:!!clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
 
   const isProfilesRlsViolation = (err: unknown) => {
     const msg = (err as any)?.message?.toLowerCase?.() ?? ""
@@ -954,10 +920,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
   // If email is not provided, create a plain profiles row immediately.
   if (!email) {
     const clientProfileId = randomUUID()
-
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'H',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:start',data:{hasBarberId:!!clientData.barberId,nameLen:name.length,phoneLen:(clientData.phone||"").length},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
 
     try {
       const { error: insertErr } = await supabase.from("profiles").insert({
@@ -999,9 +961,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
         } catch (e) {
           rpcErr = e
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'I',location:'lib/actions.ts:addClient',message:'addClient:no-email:rlsRetry:fix_profiles_policy',data:{rpcErrorMessage:rpcErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
 
         const { error: retryErr } = await supabase.from("profiles").insert({
           id: clientProfileId,
@@ -1093,10 +1052,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
                 );
             `
 
-            // #region agent log
-            fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'R',location:'lib/actions.ts:addClient',message:'addClient:no-email:exec_sql:attempt',data:{hasExecSqlFn:false,barberId:clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
-            // #endregion
-
             let execErr: any = null
             try {
               const { error } = await supabase.rpc("exec_sql", { sql: dropAndRecreatePoliciesSql })
@@ -1104,10 +1059,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
             } catch (e) {
               execErr = e
             }
-
-            // #region agent log
-            fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'R',location:'lib/actions.ts:addClient',message:'addClient:no-email:exec_sql:result',data:{execErrMessage:execErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
-            // #endregion
 
             if (!execErr) {
               const { error: retryErr2 } = await supabase.from("profiles").insert({
@@ -1139,25 +1090,16 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
             }
           }
 
-          // #region agent log
-          fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'I',location:'lib/actions.ts:addClient',message:'addClient:no-email:rlsRetry:insertAgainError',data:{retryErrorMessage:retryErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
-          // #endregion
           return null
         }
 
         rlsRetrySucceeded = true
       } else {
         // Not an RLS policy issue; fail fast.
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'I',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:errorNonRls',data:{errorMessage:insertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
         return null
       }
 
       if (!rlsRetrySucceeded) {
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'H',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:error',data:{errorMessage:insertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
       }
       // Note: if we reached here after RLS repair, the row insert succeeded and we should continue.
       await notifyBarberStaffNewClient(supabase, {
@@ -1176,18 +1118,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
         appointmentsCount: 0,
       }
     } catch (err) {
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-no-email',hypothesisId:'K',location:'lib/actions.ts:addClient',message:'addClient:no-email:insert:exception',data:{errorMessage:(err as any)?.message??null},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
       throw err
     }
   }
 
   // Magic-link / auth-user creation is handled client-side to ensure the PKCE verifier is available
   // when hitting `/auth/callback`. This server action only creates client `profiles` rows when `email` is empty.
-  // #region agent log
-  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'S',location:'lib/actions.ts:addClient',message:'addClient:emailProvided:skipOtpServerAction',data:{emailLen:email.length,hasBarberId:!!clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
 
   return null
 
@@ -1214,20 +1150,12 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
     originSource = "host"
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'F',location:'lib/actions.ts:addClient',message:'addClient:originResolved',data:{originSource,originLen:origin?.length??0,hasOrigin:!!origin,hasSupabaseUrl:!!process.env.NEXT_PUBLIC_SUPABASE_URL,hasServiceRole:!!process.env.SUPABASE_SERVICE_ROLE_KEY},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
-
   if (!origin) {
     console.error("addClient: missing origin for emailRedirectTo", { originSource, hasSupabaseUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL })
     return null
   }
 
   const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/booking")}`
-
-  // #region agent log
-  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'C',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:start',data:{emailLen:clientData.email?.length??0,hasBarberId:!!clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
 
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
@@ -1249,13 +1177,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
       (error as any)?.status === 429 ||
       (error as any)?.code === "rate_limit_exceeded"
 
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'E',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:error:rateLimitDecision',data:{isRateLimit,hasServiceRole:!!process.env.SUPABASE_SERVICE_ROLE_KEY,hasSupabaseUrl:!!process.env.NEXT_PUBLIC_SUPABASE_URL,errorMessage:(error?.message??null)},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
-
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'C',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:error',data:{errorMessage:error?.message??null,hasData:!!data},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
     if (!isRateLimit) return null
 
     // Rate limit is preventing the email from being sent, which also prevents the client auth user from being created.
@@ -1274,10 +1195,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
         .eq("email", email)
         .maybeSingle()
 
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'G',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:noServiceRole:profileLookup',data:{hasError:!!findProfileErr,errorMessage:findProfileErr?.message??null,hasExisting:!!existingProfile?.id},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
-
       if (findProfileErr) return null
 
       let clientProfileId = existingProfile?.id as string | undefined
@@ -1292,10 +1209,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
           phone: clientData.phone || null,
           barber_id: clientData.barberId,
         })
-
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'G',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:noServiceRole:profileInsert',data:{hasError:!!insertProfileErr,errorMessage:insertProfileErr?.message??null,clientProfileId,barberId:clientData.barberId},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
 
         if (insertProfileErr) return null
       }
@@ -1335,18 +1248,11 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
 
     const createdUserId = (createdUserData as any)?.user?.id as string | undefined
 
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'D',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:createUser',data:{hasUserId:!!createdUserId,hasError:!!createUserError,createUserErrorMessage:createUserError?.message??null},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
-
     let userId = createdUserId
     if (!userId) {
       // If the user already exists, reuse it. This is a best-effort fallback for dev/admin workflows.
       const { data: usersPage, error: listUsersError } = await admin.auth.admin.listUsers({ page: 1, perPage: 100 } as any)
       if (listUsersError) {
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'D',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:listUsers:error',data:{errorMessage:listUsersError?.message??null},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
         return null
       }
       userId = (usersPage as any)?.users?.find((u: any) => (u?.email || "").toLowerCase() === clientData.email.toLowerCase())?.id
@@ -1367,10 +1273,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
         } as any,
         { onConflict: "id" },
       )
-
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'D',location:'lib/actions.ts:addClient',message:'addClient:rateLimit:fallback:profileUpsert',data:{hasError:!!profileUpsertError,profileUpsertErrorMessage:profileUpsertError?.message??null},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
 
     if (profileUpsertError) return null
 
@@ -1395,9 +1297,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
   }
 
   // Client row will appear after user verifies the magic link.
-  // #region agent log
-  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-client-invite',hypothesisId:'C',location:'lib/actions.ts:addClient',message:'addClient:signInWithOtp:success',data:{hasData:!!data},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
 
   // If Supabase created an auth user for this email, upsert the matching profiles row immediately
   // so the admin “Clienti” list updates without waiting for the magic link confirmation.
@@ -1407,10 +1306,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
     (data as any)?.data?.user?.id ??
     null
 
-  // #region agent log
-  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'L',location:'lib/actions.ts:addClient',message:'addClient:otp-success:userId-extracted',data:{hasUserId:!!userId,userId:typeof userId==='string'?userId.slice(0,8):null},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
-
   if (!userId) return null
 
   const userIdData = {
@@ -1418,10 +1313,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
     hasSessionUser: !!(data as any)?.session?.user,
     hasDataUser: !!(data as any)?.data?.user,
   }
-
-  // #region agent log
-  fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'L',location:'lib/actions.ts:addClient',message:'addClient:otp-success:data-structure',data:{...userIdData},timestamp:Date.now()})}).catch(()=>{})
-  // #endregion
 
   const { error: profileUpsertErr } = await supabase.from("profiles").upsert(
     {
@@ -1437,9 +1328,6 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
 
   if (profileUpsertErr) {
     console.error("addClient:profiles upsert after OTP success:", profileUpsertErr)
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'debug-client-add',hypothesisId:'L',location:'lib/actions.ts:addClient',message:'addClient:otp-success:profiles-upsert:error',data:{errorMessage:profileUpsertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
     return null
   }
 
@@ -1688,13 +1576,6 @@ export async function updateAppointmentStatus(
         .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
       if (insertedNotifications?.length) {
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-delivery-debug',hypothesisId:'H14',location:'lib/actions.ts:updateAppointmentStatus',message:'notifications_inserted_before_push_dispatch',data:{insertedNotificationsCount:insertedNotifications.length,status},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        console.error("[PushDebug][H14] notifications_inserted_before_push_dispatch", {
-          insertedNotificationsCount: insertedNotifications.length,
-          status,
-        })
         await sendPushForInsertedNotifications(insertedNotifications as any)
       }
     }
@@ -1796,11 +1677,6 @@ export async function updateAppointmentDetailsByAdmin(
 ): Promise<{ ok: boolean; message?: string }> {
   const supabase = await db()
   if (!supabase || !appointmentId || !barberId) return { ok: false, message: "Richiesta non valida" }
-  console.error("[PushDebug][H17] updateAppointmentDetailsByAdmin_called", {
-    appointmentId,
-    barberId,
-    status: payload.status,
-  })
 
   const dateKey = appointmentCalendarDateKey(payload.date)
   if (!dateKey) return { ok: false, message: "Data non valida" }
@@ -1919,15 +1795,11 @@ export async function updateAppointmentDetailsByAdmin(
         ])
         .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
-      console.error("[PushDebug][H18] updateAppointmentDetailsByAdmin_notifications_inserted", {
-        insertedNotificationsCount: insertedNotifications?.length ?? 0,
-      })
       if (insertedNotifications?.length) {
         await sendPushForInsertedNotifications(insertedNotifications as any)
       }
     }
   } catch (e) {
-    console.error("[PushDebug][H18] updateAppointmentDetailsByAdmin_notifications_error", e)
   }
 
   return { ok: true }

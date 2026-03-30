@@ -108,9 +108,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [supabase, upsertAndLoadProfile])
 
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-permission-debug-auth',hypothesisId:'H6',location:'components/auth-context.tsx:authEffect',message:'auth_effect_bootstrap',data:{hasSupabase:Boolean(supabase),pathname:pathnameRef.current ?? null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!supabase) {
       setAuthState({
         user: null,
@@ -122,9 +119,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const checkAuth = async () => {
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'push-permission-debug-auth',hypothesisId:'H7',location:'components/auth-context.tsx:checkAuth',message:'check_auth_start',data:{authMutationInFlight:Boolean(authMutationInFlightRef.current),path:pathnameRef.current ?? null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       const currentPath =
         pathnameRef.current ?? (typeof window !== "undefined" ? window.location.pathname : "")
       // Evita race: mentre stiamo facendo sign-in/sign-up, non chiamiamo `getSession()`

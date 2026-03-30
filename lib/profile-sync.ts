@@ -81,9 +81,6 @@ export async function syncProfileFromAuthUser(
     if (insertError) {
       // eslint-disable-next-line no-console
       console.error("syncProfileFromAuthUser insert:", insertError)
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-auth-callback',hypothesisId:'M',location:'lib/profile-sync.ts:syncProfileFromAuthUser',message:'syncProfileFromAuthUser:insert:error',data:{errorMessage:insertError?.message??null},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
       return null
     }
   } else {
@@ -98,9 +95,6 @@ export async function syncProfileFromAuthUser(
     if (updateError) {
       // eslint-disable-next-line no-console
       console.error("syncProfileFromAuthUser update:", updateError)
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-auth-callback',hypothesisId:'M',location:'lib/profile-sync.ts:syncProfileFromAuthUser',message:'syncProfileFromAuthUser:update:error',data:{errorMessage:updateError?.message??null},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
       return null
     }
   }
@@ -114,9 +108,6 @@ export async function syncProfileFromAuthUser(
   if (finalError || !profileData) {
     // eslint-disable-next-line no-console
     console.error("syncProfileFromAuthUser final select:", finalError)
-    // #region agent log
-    fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'post-fix-auth-callback',hypothesisId:'M',location:'lib/profile-sync.ts:syncProfileFromAuthUser',message:'syncProfileFromAuthUser:final:select:error',data:{errorMessage:finalError?.message??null},timestamp:Date.now()})}).catch(()=>{})
-    // #endregion
     return null
   }
 

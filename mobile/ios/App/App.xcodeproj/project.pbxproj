@@ -21,6 +21,7 @@
 		CFCCEDE32F76CD6300C0A347 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = CFCCEDE22F76CD6300C0A347 /* FirebaseAnalytics */; };
 		CFCCEDE52F76CD6300C0A347 /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = CFCCEDE42F76CD6300C0A347 /* FirebaseAnalyticsCore */; };
 		CFCCEDE72F76CD6300C0A347 /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = CFCCEDE62F76CD6300C0A347 /* FirebaseAnalyticsIdentitySupport */; };
+		CFCCEDF12F76CD6300C0A347 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = CFCCEDF02F76CD6300C0A347 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +50,7 @@
 				CFCCEDE52F76CD6300C0A347 /* FirebaseAnalyticsCore in Frameworks */,
 				CFCCEDE32F76CD6300C0A347 /* FirebaseAnalytics in Frameworks */,
 				CFCCEDDF2F76CD6300C0A347 /* FirebaseAI in Frameworks */,
+				CFCCEDF12F76CD6300C0A347 /* FirebaseMessaging in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +114,7 @@
 				CFCCEDE22F76CD6300C0A347 /* FirebaseAnalytics */,
 				CFCCEDE42F76CD6300C0A347 /* FirebaseAnalyticsCore */,
 				CFCCEDE62F76CD6300C0A347 /* FirebaseAnalyticsIdentitySupport */,
+				CFCCEDF02F76CD6300C0A347 /* FirebaseMessaging */,
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
@@ -434,6 +437,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = CFCCEDDD2F76CD6300C0A347 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalyticsIdentitySupport;
+		};
+		CFCCEDF02F76CD6300C0A347 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CFCCEDDD2F76CD6300C0A347 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

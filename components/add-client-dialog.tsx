@@ -38,9 +38,6 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
     try {
       if (!barberId) return
       const emailValue = email.trim()
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'pre-fix-client',hypothesisId:'A',location:'components/add-client-dialog.tsx',message:'addClient:start',data:{hasBarberId:!!barberId,nameLen:name.trim().length},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
       if (!emailValue) {
         setIsSubmitting(false)
         throw new Error("Email obbligatoria per aggiungere un cliente")
@@ -83,9 +80,6 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
 
       const userId = (signUpData as any)?.user?.id as string | undefined
       if (!userId) throw new Error("Impossibile ottenere userId dopo signup")
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'add-client',hypothesisId:'A',location:'components/add-client-dialog.tsx',message:'addClient:signup:done',data:{hasUserId:!!userId,userIdPrefix:userId?.slice(0,8)??null},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
 
       // IMPORTANT: `signUp` can change the current auth user in the browser.
       // RLS for `profiles` insert expects `auth.uid()` to be the logged-in admin/staff.
@@ -100,7 +94,6 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
       // Extra sanity check: RLS uses auth.uid(); ensure we are back to the admin.
       try {
         const { data: current } = await supabase.auth.getUser()
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'add-client',hypothesisId:'V',location:'components/add-client-dialog.tsx',message:'auth.uid:afterRestore',data:{currentUserId:current?.user?.id??null,adminUserId:adminSession.user.id},timestamp:Date.now()})}).catch(()=>{})
       } catch {
         // Ignore - auth state will still be used by RLS.
       }
@@ -122,18 +115,11 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
       if (profileUpsertErr) {
         const errMsg = profileUpsertErr?.message?.toLowerCase?.() ?? ""
         const isRls = errMsg.includes("row-level security") || errMsg.includes("violates row-level security")
-        // #region agent log
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'profiles-upsert-retry',hypothesisId:'T',location:'components/add-client-dialog.tsx',message:'profiles upsert error',data:{isRls, errorMessage:profileUpsertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
-        // #endregion
 
         if (isRls) {
           // Attempt to repair RLS policy and retry once.
           const fixResp = await fetch("/api/fix-profiles-policy", { method: "POST" }).catch(() => null)
           const fixJson = fixResp ? await fixResp.json().catch(() => null) : null
-
-          // #region agent log
-          fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'profiles-upsert-retry',hypothesisId:'T',location:'components/add-client-dialog.tsx',message:'fix-profiles-policy response',data:{status:fixResp?.status??null,fixJson},timestamp:Date.now()})}).catch(()=>{})
-          // #endregion
 
           const { error: retryErr } = await supabase.from("profiles").upsert(
             {
@@ -148,17 +134,11 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
           )
 
           if (retryErr) {
-            fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'profiles-upsert-retry',hypothesisId:'E',location:'components/add-client-dialog.tsx',message:'profiles upsert retry error',data:{errorMessage:retryErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
             throw retryErr
           }
-
-          fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'profiles-upsert-retry',hypothesisId:'T',location:'components/add-client-dialog.tsx',message:'profiles upsert retry success',data:{},timestamp:Date.now()})}).catch(()=>{})
         } else {
-          fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'profiles-upsert',hypothesisId:'E',location:'components/add-client-dialog.tsx',message:'profiles upsert non-rls error',data:{errorMessage:profileUpsertErr?.message??null},timestamp:Date.now()})}).catch(()=>{})
           throw profileUpsertErr
         }
-      } else {
-        fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'profiles-upsert',hypothesisId:'T',location:'components/add-client-dialog.tsx',message:'profiles upsert success',data:{},timestamp:Date.now()})}).catch(()=>{})
       }
 
       // Notify the list to refetch (avoid full page reload).
@@ -174,9 +154,6 @@ export function AddClientDialog({ open, onOpenChange }: AddClientDialogProps) {
       // Email always exists now, so list refresh is handled after profiles upsert.
     } catch (error) {
       console.error("Error adding client:", error)
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'dd094c'},body:JSON.stringify({sessionId:'dd094c',runId:'add-client',hypothesisId:'E',location:'components/add-client-dialog.tsx',message:'addClient:error',data:{errorMessage:(error as any)?.message??null},timestamp:Date.now()})}).catch(()=>{})
-      // #endregion
 
       if (emailSent) {
         // Email is already in-flight; keep UX responsive and close the modal.

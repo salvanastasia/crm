@@ -4,10 +4,16 @@ import { getMessaging } from "firebase-admin/messaging"
 
 let app: App | null = null
 
-/** Env may be inline JSON (Vercel) or absolute path to the key file (common locally). */
 function resolveFirebaseServiceAccountJson(): string | null {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()
   if (!raw) return null
+  if (raw.startsWith("base64:")) {
+    try {
+      return Buffer.from(raw.slice("base64:".length).trim(), "base64").toString("utf8")
+    } catch {
+      return null
+    }
+  }
   const c = raw[0]
   if (c === "{" || c === "[") return raw
   try {
@@ -15,10 +21,19 @@ function resolveFirebaseServiceAccountJson(): string | null {
   } catch {
     // ignore
   }
-  console.error("[PushDebug][H33] firebase_service_account_path_not_readable", {
-    pathLooksAbsolute: raw.startsWith("/"),
-  })
   return raw
+}
+
+function normalizeServiceAccountParsed(parsed: {
+  project_id?: string
+  client_email?: string
+  private_key?: string
+}) {
+  const k = parsed.private_key
+  if (!k) return
+  if (k.includes("\\n")) {
+    parsed.private_key = k.replace(/\\n/g, "\n")
+  }
 }
 
 function getFirebaseApp(): App | null {
@@ -40,32 +55,29 @@ function getFirebaseApp(): App | null {
     try {
       parsed = JSON.parse(jsonStr) as typeof parsed
     } catch (e) {
-      // #region agent log
-      fetch('http://127.0.0.1:7468/ingest/1d7adf57-dba0-41ca-81ee-3c4bffb08dde',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'1fc81e'},body:JSON.stringify({sessionId:'1fc81e',runId:'post-fix',hypothesisId:'H31',location:'lib/firebase-admin.ts:getFirebaseApp',message:'firebase_service_account_json_parse_failed',data:{hint:'Set FIREBASE_SERVICE_ACCOUNT_JSON to full JSON on Vercel, or a readable file path locally'},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      console.error("[PushDebug][H31] firebase_service_account_json_parse_failed", {
-        hint: "Use pasted JSON in Vercel env, or a valid absolute path to the .json file locally",
-      })
       console.error("getFirebaseApp JSON.parse:", e)
       return null
     }
+
+    normalizeServiceAccountParsed(parsed)
 
     if (!parsed.project_id || !parsed.client_email || !parsed.private_key) {
       console.warn("FIREBASE_SERVICE_ACCOUNT_JSON invalid: push disabled")
       return null
     }
 
-    app = initializeApp({
-      credential: cert({
-        projectId: parsed.project_id,
-        clientEmail: parsed.client_email,
-        privateKey: parsed.private_key,
-      }),
-    })
-
-    console.error("[PushDebug][H32] firebase_admin_init_ok", {
-      projectId: parsed.project_id,
-    })
+    try {
+      app = initializeApp({
+        credential: cert({
+          projectId: parsed.project_id,
+          clientEmail: parsed.client_email,
+          privateKey: parsed.private_key,
+        }),
+      })
+    } catch (certErr) {
+      console.error("getFirebaseApp cert:", certErr)
+      return null
+    }
 
     return app
   } catch (error) {
@@ -79,4 +91,3 @@ export function getFirebaseMessaging() {
   if (!firebaseApp) return null
   return getMessaging(firebaseApp)
 }
-
