@@ -1591,6 +1591,103 @@ export async function updateAppointmentStatus(
   return true
 }
 
+export async function clientCancelAppointment(
+  appointmentId: string,
+): Promise<{ success: boolean; message: string }> {
+  const supabase = await db()
+  if (!supabase) return { success: false, message: "Sessione non valida." }
+
+  const {
+    data: { user: sessionUser },
+  } = await supabase.auth.getUser()
+  if (!sessionUser) return { success: false, message: "Devi essere autenticato." }
+
+  const { data: appointment, error: loadErr } = await supabase
+    .from("appointments")
+    .select("id, barber_id, client_id, service_id, resource_id, date, time, status")
+    .eq("id", appointmentId)
+    .maybeSingle()
+
+  if (loadErr || !appointment) {
+    return { success: false, message: "Prenotazione non trovata." }
+  }
+  if (appointment.client_id !== sessionUser.id) {
+    return { success: false, message: "Non sei autorizzato ad annullare questa prenotazione." }
+  }
+  if (appointment.status === "cancelled") {
+    return { success: false, message: "La prenotazione e' gia' stata annullata." }
+  }
+
+  const { error: updateErr } = await supabase
+    .from("appointments")
+    .update({ status: "cancelled", payment_status: "pending" })
+    .eq("id", appointmentId)
+    .eq("client_id", sessionUser.id)
+
+  if (updateErr) {
+    console.error("clientCancelAppointment:", updateErr)
+    return { success: false, message: "Errore durante l'annullamento. Riprova." }
+  }
+
+  try {
+    const admin = dbAdmin()
+    if (admin && appointment.barber_id) {
+      const [{ data: svc }, { data: res }] = await Promise.all([
+        appointment.service_id
+          ? supabase.from("services").select("name").eq("id", appointment.service_id).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+        appointment.resource_id
+          ? supabase.from("resources").select("name").eq("id", appointment.resource_id).maybeSingle()
+          : Promise.resolve({ data: null as any }),
+      ])
+
+      const serviceName = svc?.name ?? "Servizio"
+      const resourceName = res?.name ?? "Staff"
+      const dateKey = String(appointment.date)
+      const timeKey = String(appointment.time).slice(0, 5)
+
+      const { data: clientProfile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", sessionUser.id)
+        .maybeSingle()
+
+      const clientName = clientProfile?.name ?? "Cliente"
+
+      const { data: staffProfiles } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("barber_id", appointment.barber_id)
+        .in("role", ["admin", "staff"])
+
+      if (staffProfiles?.length) {
+        const notifs = staffProfiles.map((p: { id: string }) => ({
+          barber_id: appointment.barber_id,
+          recipient_user_id: p.id,
+          audience: "barber_staff" as const,
+          type: "appointment_cancelled_by_client",
+          title: "Prenotazione annullata dal cliente",
+          body: `${clientName} ha annullato: ${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`,
+          data: { appointmentId, serviceName, resourceName, date: dateKey, time: timeKey },
+        }))
+
+        const { data: inserted } = await admin
+          .from("notifications")
+          .insert(notifs)
+          .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
+
+        if (inserted?.length) {
+          await sendPushForInsertedNotifications(inserted as any)
+        }
+      }
+    }
+  } catch (e) {
+    console.error("clientCancelAppointment(notifications):", e)
+  }
+
+  return { success: true, message: "Prenotazione annullata con successo." }
+}
+
 export async function getMyNotifications(params?: {
   limit?: number
   offset?: number

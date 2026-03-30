@@ -4,10 +4,21 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { format } from "date-fns"
 import { it } from "date-fns/locale"
+import { CalendarDays, Clock, Scissors, User, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer"
 import { useAuth } from "@/components/auth-context"
-import { getClientAppointments } from "@/lib/actions"
+import { getClientAppointments, clientCancelAppointment } from "@/lib/actions"
 import type { Appointment } from "@/lib/types"
 import { toast } from "@/components/ui/use-toast"
 import { useAppointmentsRealtime } from "@/hooks/use-appointments-realtime"
@@ -20,6 +31,11 @@ export function LeTuePrenotazioniClient() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [loadingAppointments, setLoadingAppointments] = useState(false)
   const [showBookedNotice, setShowBookedNotice] = useState(false)
+
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
 
   useEffect(() => {
     if (isLoading) return
@@ -110,6 +126,70 @@ export function LeTuePrenotazioniClient() {
     return ""
   }
 
+  const canCancel = (a: Appointment) => a.status !== "cancelled"
+
+  const openDetail = (a: Appointment) => {
+    setSelectedAppointment(a)
+    setShowCancelConfirm(false)
+    setDrawerOpen(true)
+  }
+
+  const handleCancel = async () => {
+    if (!selectedAppointment) return
+    setConfirmingCancel(true)
+    try {
+      const result = await clientCancelAppointment(selectedAppointment.id)
+      if (result.success) {
+        toast({ title: "Prenotazione annullata", description: result.message })
+        setDrawerOpen(false)
+        void loadClientAppointments()
+      } else {
+        toast({ title: "Errore", description: result.message, variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Errore", description: "Si e' verificato un errore. Riprova.", variant: "destructive" })
+    } finally {
+      setConfirmingCancel(false)
+      setShowCancelConfirm(false)
+    }
+  }
+
+  const renderAppointmentRow = (appointment: Appointment, tappable: boolean) => {
+    const date =
+      typeof appointment.date === "string" ? parseAppointmentDateLocal(appointment.date) : appointment.date
+    return (
+      <button
+        key={appointment.id}
+        type="button"
+        disabled={!tappable}
+        onClick={() => tappable && openDetail(appointment)}
+        className="flex w-full items-center justify-between gap-4 border-b pb-4 last:border-0 text-left disabled:cursor-default"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-16 h-16 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
+            <span className="text-xs font-semibold uppercase leading-none">{format(date, "MMM", { locale: it })}</span>
+            <span className="text-2xl font-bold leading-none mt-1">{format(date, "d")}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium truncate">{appointment.serviceName || "Servizio"}</p>
+            <p className="text-sm text-muted-foreground truncate">
+              {appointment.resourceName || "Staff"} - {String(appointment.time).slice(0, 5)}
+            </p>
+          </div>
+        </div>
+        <Badge variant="outline" className={statusClassName(appointment.status)}>
+          {statusLabel(appointment.status)}
+        </Badge>
+      </button>
+    )
+  }
+
+  const selectedDate = selectedAppointment
+    ? typeof selectedAppointment.date === "string"
+      ? parseAppointmentDateLocal(selectedAppointment.date)
+      : selectedAppointment.date
+    : null
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Le Tue Prenotazioni</h1>
@@ -131,29 +211,7 @@ export function LeTuePrenotazioniClient() {
             <p className="text-muted-foreground">Nessuna prenotazione imminente.</p>
           ) : (
             <div className="space-y-4">
-              {upcomingAppointments.map((appointment) => {
-                const date =
-                  typeof appointment.date === "string" ? parseAppointmentDateLocal(appointment.date) : appointment.date
-                return (
-                  <div key={appointment.id} className="flex items-center justify-between gap-4 border-b pb-4 last:border-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-16 h-16 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
-                        <span className="text-xs font-semibold uppercase leading-none">{format(date, "MMM", { locale: it })}</span>
-                        <span className="text-2xl font-bold leading-none mt-1">{format(date, "d")}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{appointment.serviceName || "Servizio"}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {appointment.resourceName || "Staff"} - {String(appointment.time).slice(0, 5)}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className={statusClassName(appointment.status)}>
-                      {statusLabel(appointment.status)}
-                    </Badge>
-                  </div>
-                )
-              })}
+              {upcomingAppointments.map((a) => renderAppointmentRow(a, canCancel(a)))}
             </div>
           )}
         </CardContent>
@@ -170,33 +228,118 @@ export function LeTuePrenotazioniClient() {
             <p className="text-muted-foreground">Nessuna prenotazione passata.</p>
           ) : (
             <div className="space-y-4">
-              {pastAppointments.map((appointment) => {
-                const date =
-                  typeof appointment.date === "string" ? parseAppointmentDateLocal(appointment.date) : appointment.date
-                return (
-                  <div key={appointment.id} className="flex items-center justify-between gap-4 border-b pb-4 last:border-0">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-16 h-16 rounded-xl bg-zinc-100 text-zinc-800 flex flex-col items-center justify-center shrink-0 border border-zinc-200">
-                        <span className="text-xs font-semibold uppercase leading-none">{format(date, "MMM", { locale: it })}</span>
-                        <span className="text-2xl font-bold leading-none mt-1">{format(date, "d")}</span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{appointment.serviceName || "Servizio"}</p>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {appointment.resourceName || "Staff"} - {String(appointment.time).slice(0, 5)}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className={statusClassName(appointment.status)}>
-                      {statusLabel(appointment.status)}
-                    </Badge>
-                  </div>
-                )
-              })}
+              {pastAppointments.map((a) => renderAppointmentRow(a, false))}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Detail drawer */}
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader className="relative">
+            <DrawerClose asChild>
+              <button
+                type="button"
+                className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted"
+                aria-label="Chiudi"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </DrawerClose>
+            <DrawerTitle className="text-lg">Dettaglio prenotazione</DrawerTitle>
+            <DrawerDescription>
+              {selectedAppointment && (
+                <Badge variant="outline" className={statusClassName(selectedAppointment.status)}>
+                  {statusLabel(selectedAppointment.status)}
+                </Badge>
+              )}
+            </DrawerDescription>
+          </DrawerHeader>
+
+          {selectedAppointment && selectedDate && (
+            <div className="px-4 pb-2 space-y-4">
+              <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Scissors className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Servizio</p>
+                    <p className="font-medium">{selectedAppointment.serviceName || "Servizio"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Collaboratore</p>
+                    <p className="font-medium">{selectedAppointment.resourceName || "Staff"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Data</p>
+                    <p className="font-medium capitalize">
+                      {format(selectedDate, "EEEE d MMMM yyyy", { locale: it })}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Ora</p>
+                    <p className="font-medium">{String(selectedAppointment.time).slice(0, 5)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DrawerFooter>
+            {selectedAppointment && canCancel(selectedAppointment) && (
+              <>
+                {!showCancelConfirm ? (
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => setShowCancelConfirm(true)}
+                  >
+                    Annulla prenotazione
+                  </Button>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-center text-muted-foreground">
+                      Sei sicuro di voler annullare questa prenotazione?
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setShowCancelConfirm(false)}
+                        disabled={confirmingCancel}
+                      >
+                        No, torna indietro
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        className="flex-1"
+                        onClick={handleCancel}
+                        disabled={confirmingCancel}
+                      >
+                        {confirmingCancel ? "Annullamento..." : "Si, annulla"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            <DrawerClose asChild>
+              <Button variant="ghost" className="w-full">
+                Chiudi
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </div>
   )
 }
