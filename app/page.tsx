@@ -95,7 +95,7 @@ export default function Dashboard() {
     )
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || user?.role === "client" || (user?.role === "admin" && !user.barberId)) {
     return null
   }
 

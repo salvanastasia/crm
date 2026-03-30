@@ -55,7 +55,7 @@ export function Header({ dockedChrome = false }: { dockedChrome?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const [settings, setSettings] = useState<BrandSettings | null>(null)
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
   const isCapacitorNative = useIsCapacitorNative()
 
   const isStaff = user && (user.role === "admin" || user.role === "staff")
@@ -628,11 +628,11 @@ export function Header({ dockedChrome = false }: { dockedChrome?: boolean }) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null
-            ) : (
+            ) : !isLoading ? (
               <Button variant="default" size="sm" asChild>
                 <Link href="/login">Accedi</Link>
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
