@@ -94,9 +94,14 @@ export function DateTimeSelector({
         const busy = toBusyIntervals(bookedIntervals)
         const dur = Math.max(5, Number(serviceDuration) || 30)
 
+        const now = new Date()
+        const selectedIsToday = isToday(selectedDate)
+        const nowMinutes = selectedIsToday ? now.getHours() * 60 + now.getMinutes() : 0
+
         setAvailableTimeSlots(
           slots.filter((slot) => {
             const startMin = timeStringToMinutes(slot)
+            if (selectedIsToday && startMin <= nowMinutes) return false
             if (startMin + dur > closeMin) return false
             return !slotOverlapsAnyBusy(startMin, dur, busy)
           }),
