@@ -263,7 +263,7 @@ export function Header({ dockedChrome = false }: { dockedChrome?: boolean }) {
                       <div className="space-y-2 p-2">
                         {clientNotificationsUnread.slice(0, 5).map((a) => {
                           const date = typeof a.date === "string" ? parseAppointmentDateLocal(a.date) : a.date
-                          const statusText = a.status === "confirmed" ? "Confermato" : a.status === "cancelled" ? "Rifiutato" : a.status
+                          const statusText = a.status === "confirmed" ? "Confermato" : a.status === "cancelled" ? "Cancellato" : a.status
                           return (
                             <div key={a.id} className="rounded-md border p-2 space-y-2">
                               <div className="flex items-start justify-between gap-3">
@@ -416,7 +416,7 @@ export function Header({ dockedChrome = false }: { dockedChrome?: boolean }) {
                   ) : (
                     <div className="space-y-2 p-2">
                       {clientNotificationsUnread.slice(0, 5).map((a) => {
-                        const statusText = a.status === "confirmed" ? "Confermato" : a.status === "cancelled" ? "Rifiutato" : a.status
+                        const statusText = a.status === "confirmed" ? "Confermato" : a.status === "cancelled" ? "Cancellato" : a.status
                         const date =
                           typeof a.date === "string" ? parseAppointmentDateLocal(a.date) : a.date
                         return (

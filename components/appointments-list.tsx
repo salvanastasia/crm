@@ -154,7 +154,7 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
 
   const statusLabel = (status: Appointment["status"]) => {
     if (status === "confirmed") return "Confermato"
-    if (status === "cancelled") return "Rifiutato"
+    if (status === "cancelled") return "Cancellato"
     if (status === "pending") return "In attesa"
     if (status === "completed") return "Completato"
     return status
@@ -303,7 +303,7 @@ export function AppointmentsList({ selectedDate }: AppointmentsListProps) {
                   <SelectItem value="pending">In attesa</SelectItem>
                   <SelectItem value="confirmed">Confermato</SelectItem>
                   <SelectItem value="completed">Completato</SelectItem>
-                  <SelectItem value="cancelled">Rifiutato</SelectItem>
+                  <SelectItem value="cancelled">Cancellato</SelectItem>
                 </SelectContent>
               </Select>
             </div>

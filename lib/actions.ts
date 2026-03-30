@@ -1552,7 +1552,7 @@ export async function updateAppointmentStatus(
       const dateKey = String(before.date)
       const timeKey = String(before.time).slice(0, 5)
 
-      const clientTitle = status === "confirmed" ? "Prenotazione confermata" : "Prenotazione rifiutata"
+      const clientTitle = status === "confirmed" ? "Prenotazione confermata" : "Prenotazione cancellata"
       const clientBody = `${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`
 
       const admin = dbAdmin()
@@ -1869,7 +1869,7 @@ export async function updateAppointmentDetailsByAdmin(
         payload.status === "confirmed"
           ? "Prenotazione confermata"
           : payload.status === "cancelled"
-            ? "Prenotazione rifiutata"
+            ? "Prenotazione cancellata"
             : payload.status === "completed"
               ? "Prenotazione completata"
               : "Prenotazione in attesa"

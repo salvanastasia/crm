@@ -105,7 +105,7 @@ export function LeTuePrenotazioniClient() {
   const statusLabel = (status: Appointment["status"]) => {
     if (status === "confirmed") return "Confermato"
     if (status === "completed") return "Completato"
-    if (status === "cancelled") return "Rifiutato"
+    if (status === "cancelled") return "Cancellato"
     if (status === "pending") return "In attesa"
     return status
   }
