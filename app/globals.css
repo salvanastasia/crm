@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --app-height: 100dvh;
   /* Light mode - come nell'immagine */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.147 0.004 49.3);

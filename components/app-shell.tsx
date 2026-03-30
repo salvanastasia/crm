@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useEffect } from "react"
+import { useCallback, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { Capacitor } from "@capacitor/core"
 import { StatusBar, Style } from "@capacitor/status-bar"
@@ -51,6 +51,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isDark = resolvedTheme === "dark"
 
+  const syncAppHeight = useCallback(() => {
+    document.documentElement.style.setProperty("--app-height", `${window.innerHeight}px`)
+  }, [])
+
+  useEffect(() => {
+    syncAppHeight()
+    window.addEventListener("resize", syncAppHeight)
+    return () => window.removeEventListener("resize", syncAppHeight)
+  }, [syncAppHeight])
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return
     const init = async () => {
@@ -64,12 +74,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         await StatusBar.setBackgroundColor({
           color: isDark ? "#000000" : "#ffffff",
         })
+        requestAnimationFrame(syncAppHeight)
       } catch {
         /* ignore */
       }
     }
     void init()
-  }, [isDark])
+  }, [isDark, syncAppHeight])
 
   useEffect(() => {
     if (!dockedChrome) return
@@ -98,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div
       className={cn(
         "flex min-w-0 flex-col",
-        dockedChrome ? "h-[100dvh] max-h-[100dvh] overflow-hidden" : "min-h-screen",
+        dockedChrome ? "h-[var(--app-height)] max-h-[var(--app-height)] overflow-hidden" : "min-h-screen",
       )}
     >
       {isCapacitorNative && <CapacitorDeepLinkBridge />}
