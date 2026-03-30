@@ -63,8 +63,9 @@ async function sendFcmMessage(token: string, payload: { title: string; body: str
     return { ok: true as const }
   } catch (error) {
     const code = (error as { code?: string } | null)?.code ?? ""
-    console.error("sendFcmMessage:", code, (error as any)?.message)
-    return { ok: false as const, error: code || "send_failed" }
+    const msg = (error as any)?.message ?? String(error)
+    console.error("sendFcmMessage failed:", { code, message: msg })
+    return { ok: false as const, error: code || "send_failed", message: msg }
   }
 }
 
@@ -215,7 +216,10 @@ export async function sendTestPushToUser(userId: string): Promise<TestPushResult
       result.succeeded += 1
     } else {
       result.failed += 1
-      result.errors.push(sendResult.error)
+      const detail = sendResult.message
+        ? `${sendResult.error}: ${sendResult.message}`
+        : sendResult.error
+      result.errors.push(detail)
       if (
         sendResult.error === "messaging/registration-token-not-registered" ||
         sendResult.error === "messaging/invalid-registration-token"

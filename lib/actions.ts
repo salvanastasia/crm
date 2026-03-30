@@ -685,11 +685,13 @@ export async function updateNotificationSettings(settings: NotificationSettings)
 }
 
 async function notifyBarberStaffNewClient(
-  supabase: NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>,
   params: { barberId: string; clientId: string; clientName: string; clientEmail: string },
 ) {
   try {
-    const { data: inserted } = await supabase
+    const admin = dbAdmin()
+    if (!admin) return
+
+    const { data: inserted } = await admin
       .from("notifications")
       .insert({
         barber_id: params.barberId,
@@ -932,7 +934,7 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
       })
 
       if (!insertErr) {
-        await notifyBarberStaffNewClient(supabase, {
+        await notifyBarberStaffNewClient({
           barberId: clientData.barberId,
           clientId: clientProfileId,
           clientName: name,
@@ -1071,7 +1073,7 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
               })
 
               if (!retryErr2) {
-                await notifyBarberStaffNewClient(supabase, {
+                await notifyBarberStaffNewClient({
                   barberId: clientData.barberId,
                   clientId: clientProfileId,
                   clientName: name,
@@ -1102,7 +1104,7 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
       if (!rlsRetrySucceeded) {
       }
       // Note: if we reached here after RLS repair, the row insert succeeded and we should continue.
-      await notifyBarberStaffNewClient(supabase, {
+      await notifyBarberStaffNewClient({
         barberId: clientData.barberId,
         clientId: clientProfileId,
         clientName: name,
@@ -1213,7 +1215,7 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
         if (insertProfileErr) return null
       }
 
-      await notifyBarberStaffNewClient(supabase, {
+      await notifyBarberStaffNewClient({
         barberId: clientData.barberId,
         clientId: clientProfileId,
         clientName: clientData.name,
@@ -1279,7 +1281,7 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
     // Best-effort: try to generate/send the magic link again (may still be rate-limited; list should still work).
     await admin.auth.admin.generateLink({ type: "magiclink", email: clientData.email, options: { emailRedirectTo } } as any).catch(() => {})
 
-    await notifyBarberStaffNewClient(supabase, {
+    await notifyBarberStaffNewClient({
       barberId: clientData.barberId,
       clientId: userId,
       clientName: clientData.name,
@@ -1331,7 +1333,7 @@ export async function addClient(clientData: Omit<Client, "id" | "appointmentsCou
     return null
   }
 
-  await notifyBarberStaffNewClient(supabase, {
+  await notifyBarberStaffNewClient({
     barberId: clientData.barberId,
     clientId: userId,
     clientName: name,
@@ -1553,30 +1555,33 @@ export async function updateAppointmentStatus(
       const clientTitle = status === "confirmed" ? "Prenotazione confermata" : "Prenotazione rifiutata"
       const clientBody = `${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`
 
-      const { data: insertedNotifications } = await supabase
-        .from("notifications")
-        .insert([
-          {
-            barber_id: barberId,
-            recipient_user_id: before.client_id,
-            audience: "user",
-            type: "appointment_status",
-            title: clientTitle,
-            body: clientBody,
-            data: {
-              appointmentId,
-              status,
-              serviceName,
-              resourceName,
-              date: dateKey,
-              time: timeKey,
+      const admin = dbAdmin()
+      if (admin) {
+        const { data: insertedNotifications } = await admin
+          .from("notifications")
+          .insert([
+            {
+              barber_id: barberId,
+              recipient_user_id: before.client_id,
+              audience: "user",
+              type: "appointment_status",
+              title: clientTitle,
+              body: clientBody,
+              data: {
+                appointmentId,
+                status,
+                serviceName,
+                resourceName,
+                date: dateKey,
+                time: timeKey,
+              },
             },
-          },
-        ])
-        .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
+          ])
+          .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
-      if (insertedNotifications?.length) {
-        await sendPushForInsertedNotifications(insertedNotifications as any)
+        if (insertedNotifications?.length) {
+          await sendPushForInsertedNotifications(insertedNotifications as any)
+        }
       }
     }
   } catch (e) {
@@ -1773,30 +1778,33 @@ export async function updateAppointmentDetailsByAdmin(
               : "Prenotazione in attesa"
       const clientBody = `${serviceName} • ${resourceName} • ${dateKey} ${timeKey}`
 
-      const { data: insertedNotifications } = await supabase
-        .from("notifications")
-        .insert([
-          {
-            barber_id: barberId,
-            recipient_user_id: row.client_id,
-            audience: "user",
-            type: "appointment_status",
-            title: clientTitle,
-            body: clientBody,
-            data: {
-              appointmentId,
-              status: payload.status,
-              serviceName,
-              resourceName,
-              date: dateKey,
-              time: timeKey,
+      const admin = dbAdmin()
+      if (admin) {
+        const { data: insertedNotifications } = await admin
+          .from("notifications")
+          .insert([
+            {
+              barber_id: barberId,
+              recipient_user_id: row.client_id,
+              audience: "user",
+              type: "appointment_status",
+              title: clientTitle,
+              body: clientBody,
+              data: {
+                appointmentId,
+                status: payload.status,
+                serviceName,
+                resourceName,
+                date: dateKey,
+                time: timeKey,
+              },
             },
-          },
-        ])
-        .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
+          ])
+          .select("id, barber_id, recipient_user_id, audience, type, title, body, data")
 
-      if (insertedNotifications?.length) {
-        await sendPushForInsertedNotifications(insertedNotifications as any)
+        if (insertedNotifications?.length) {
+          await sendPushForInsertedNotifications(insertedNotifications as any)
+        }
       }
     }
   } catch (e) {
